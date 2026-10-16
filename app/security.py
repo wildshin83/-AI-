@@ -12,9 +12,11 @@ import time
 from dataclasses import dataclass
 from urllib.parse import quote, urlsplit
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import JSONResponse
 
@@ -24,59 +26,44 @@ from app.models.auth import AuthUser
 COOKIE_NAME = "bom_session"
 SESSION_MAX_AGE = 12 * 60 * 60
 _development_secret = secrets.token_bytes(32)
-_USER_CACHE_TTL_SECONDS = 10
-_USER_CACHE_MAX_ENTRIES = 512
 
 
 @dataclass(frozen=True, slots=True)
 class SessionUser:
-    """요청 처리에 필요한 로그인 정보만 담는 짧은 수명 캐시 항목."""
+    """요청 시 DB에서 확인한 로그인 정보."""
 
     id: int
     display_name: str
     is_admin: bool
     must_change_password: bool
-
-
-_verified_users: dict[tuple[int, int], tuple[float, SessionUser]] = {}
+    permission_level: int
+    auth_version: int
 
 
 def _verified_user(identity: tuple[int, int]) -> SessionUser | None:
-    """같은 서버 인스턴스의 연속 요청에서 사용자 확인 DB 왕복을 줄인다."""
-
-    now = time.monotonic()
-    cached = _verified_users.get(identity)
-    if cached is not None:
-        expires_at, user = cached
-        if expires_at > now:
-            return user
-        _verified_users.pop(identity, None)
-
+    """모든 보호된 요청에서 활성 상태와 세션 버전을 새로 확인한다."""
     with SessionLocal() as session:
-        row = session.execute(
-            select(
-                AuthUser.id,
-                AuthUser.display_name,
-                AuthUser.is_admin,
-                AuthUser.must_change_password,
-            ).where(
-                AuthUser.id == identity[0],
-                AuthUser.auth_version == identity[1],
-                AuthUser.is_active.is_(True),
-            )
-        ).one_or_none()
+        row = session.execute(select(
+            AuthUser.id, AuthUser.display_name, AuthUser.is_admin,
+            AuthUser.must_change_password, AuthUser.permission_level, AuthUser.auth_version,
+        ).where(AuthUser.id == identity[0], AuthUser.auth_version == identity[1],
+                AuthUser.is_active.is_(True))).one_or_none()
+    return SessionUser(*row) if row else None
 
-    if row is None:
-        return None
 
-    user = SessionUser(*row)
-    if len(_verified_users) >= _USER_CACHE_MAX_ENTRIES:
-        expired = [key for key, (expiry, _) in _verified_users.items() if expiry <= now]
-        for key in expired:
-            _verified_users.pop(key, None)
-        if len(_verified_users) >= _USER_CACHE_MAX_ENTRIES:
-            _verified_users.pop(next(iter(_verified_users)))
-    _verified_users[identity] = (now + _USER_CACHE_TTL_SECONDS, user)
+def require_current_user(session: Session, identity: SessionUser, *, admin: bool = False,
+                         schedule_editor: bool = False) -> AuthUser:
+    """민감 쓰기에서 최신 권한을 확인하고 트랜잭션 동안 계정 변경과 직렬화한다."""
+    user = session.scalar(select(AuthUser).where(AuthUser.id == identity.id)
+                          .with_for_update(read=True).execution_options(populate_existing=True))
+    if not user or not user.is_active or user.auth_version != identity.auth_version:
+        raise HTTPException(401, "권한이 만료되어 접속할 수 없습니다.")
+    if user.must_change_password:
+        raise HTTPException(403, "먼저 비밀번호를 변경하세요.")
+    if admin and not user.is_admin:
+        raise HTTPException(403, "관리자 권한이 필요합니다.")
+    if schedule_editor and not (user.is_admin or user.permission_level == 2):
+        raise HTTPException(403, "2단계 사용자 또는 관리자 권한이 필요합니다.")
     return user
 
 
@@ -176,12 +163,18 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         if needs_user_context:
             identity = _session_identity(request.cookies.get(COOKIE_NAME, ""))
             if identity:
-                user = _verified_user(identity)
+                try:
+                    user = _verified_user(identity)
+                except SQLAlchemyError:
+                    return JSONResponse(status_code=503,
+                                        content={"detail": "인증 상태를 확인할 수 없습니다."})
 
         request.state.current_user = user
         if not public_path:
             if user is None:
-                if path.startswith("/admin"):
+                if has_session_cookie:
+                    response = RedirectResponse("/login?notice=expired", status_code=303)
+                elif path.startswith("/admin"):
                     destination = quote(
                         request.url.path + (f"?{request.url.query}" if request.url.query else ""),
                         safe="/",

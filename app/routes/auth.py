@@ -106,14 +106,15 @@ def submit_account_request(
 
 
 @router.get("/login")
-def login_form(request: Request, next: str = "/projects"):
+def login_form(request: Request, next: str = "/projects", notice: str = ""):
     if request.state.current_user:
         target = (
             "/account/password" if request.state.current_user.must_change_password else "/projects"
         )
         return RedirectResponse(target, status_code=303)
     return templates.TemplateResponse(
-        request, "auth/login.html", {"error": None, "next": _safe_next(next)}
+        request, "auth/login.html", {"error": "권한이 만료되어 접속할 수 없습니다."
+                                   if notice == "expired" else None, "next": _safe_next(next)}
     )
 
 
@@ -126,7 +127,7 @@ def login(
     session: Session = Depends(get_session),
 ):
     user = session.scalar(select(AuthUser).where(AuthUser.email == email.strip().casefold()))
-    valid = user is not None and user.is_active and not login_locked(user)
+    valid = user is not None and not login_locked(user)
     if not valid or not verify_password(password, user.password_hash if user else ""):
         if user and user.is_active and not login_locked(user):
             record_failed_login(user)
@@ -138,6 +139,12 @@ def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
+    if not user.is_active:
+        return templates.TemplateResponse(
+            request, "auth/login.html",
+            {"error": "권한이 만료되어 접속할 수 없습니다.", "next": _safe_next(next)},
+            status_code=403,
+        )
     user.failed_login_count = 0
     user.locked_until = None
     session.commit()

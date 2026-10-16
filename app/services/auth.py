@@ -74,9 +74,12 @@ def create_user(
     display_name: str,
     temporary_password: str,
     is_admin: bool = False,
+    permission_level: int = 1,
 ) -> AuthUser:
     """새 계정을 생성하고 첫 로그인에서 비밀번호를 바꾸도록 표시한다."""
 
+    if permission_level not in (1, 2):
+        raise ValueError("권한은 1단계 또는 2단계로 선택하세요.")
     normalized_email = normalize_email(email)
     validate_password(temporary_password)
     name = display_name.strip()
@@ -89,6 +92,7 @@ def create_user(
         display_name=name,
         password_hash=hash_password(temporary_password),
         is_admin=is_admin,
+        permission_level=2 if is_admin else permission_level,
         is_active=True,
         must_change_password=True,
     )
