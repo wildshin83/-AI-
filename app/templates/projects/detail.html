@@ -3,15 +3,11 @@
 {% block content %}
 <section class="page-heading"><div><p class="eyebrow">{{ project.project_number }}</p><h1>{{ project.project_name }}</h1><p>{{ project.customer_name }} · {{ project.equipment_unit }} · 담당 {{ project.manager_name }}</p></div><a class="button" href="/projects">목록</a></section>
 <section class="card project-summary">
-  <dl class="project-overview"><div><dt>진행 상태</dt><dd>{{ project.status }}</dd></div><div><dt>목표 납기일</dt><dd>{{ project.target_delivery_date or "미입력" }}</dd></div><div><dt>보관 상태</dt><dd>{{ "아카이브" if project.is_archived else "진행" }}</dd></div>
-    <div class="status-progress-row"><ol class="project-progress" aria-label="프로젝트 전체 진행 단계">
+  <dl class="project-overview"><div class="status-overview"><dt>진행 상태</dt><dd><ol class="status-stage-sequence" aria-label="프로젝트 전체 진행 단계">
     {% for stage in statuses %}
-    <li class="progress-step {% if loop.index0 < active_status_index %}completed{% elif loop.index0 == active_status_index %}active{% else %}pending{% endif %}" {% if loop.index0 == active_status_index %}aria-current="step"{% endif %}>
-      <span class="progress-marker">{% if loop.index0 < active_status_index %}✓{% else %}{{ loop.index }}{% endif %}</span>
-      <span class="progress-label">{{ stage.value }}</span>
-    </li>
+    <li class="status-stage {% if loop.index0 < active_status_index %}completed{% elif loop.index0 == active_status_index %}active{% else %}pending{% endif %}" {% if loop.index0 == active_status_index %}aria-current="step"{% endif %}><span class="status-marker">{% if loop.index0 < active_status_index %}✓{% else %}{{ loop.index }}{% endif %}</span><span class="status-label">{{ stage.value }}</span></li>
     {% endfor %}
-    </ol></div>
+    </ol></dd></div><div><dt>목표 납기일</dt><dd>{{ project.target_delivery_date or "미입력" }}</dd></div><div><dt>보관 상태</dt><dd>{{ "아카이브" if project.is_archived else "진행" }}</dd></div>
   </dl>
 </section>
 <section class="card next-step"><h2>자료 등록</h2><p>Inventor BOM 또는 ERP BOM Excel을 끌어 놓거나 파일을 선택하면 열 매핑 검토로 이동합니다.</p>
