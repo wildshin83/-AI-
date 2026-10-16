@@ -3,12 +3,11 @@
 {% block content %}
 <section class="page-heading"><div><p class="eyebrow">{{ project.project_number }}</p><h1>{{ project.project_name }}</h1><p>{{ project.customer_name }} · {{ project.equipment_unit }} · 담당 {{ project.manager_name }}</p></div><a class="button" href="/projects">목록</a></section>
 <section class="card project-summary">
-  <div class="project-overview"><div class="status-overview"><p class="summary-label">진행 상태</p></div><div class="summary-delivery"><p class="summary-label">목표 납기일</p><p class="summary-value">{{ project.target_delivery_date or "미입력" }}</p></div><div class="summary-archive"><p class="summary-label">보관 상태</p><p class="summary-value">{{ "아카이브" if project.is_archived else "진행" }}</p></div></div>
-  <ol class="status-stage-sequence" aria-label="프로젝트 전체 진행 단계">
+  <div class="project-overview"><div class="status-overview"><p class="summary-label">진행 상태</p><ol class="status-stage-sequence" aria-label="프로젝트 전체 진행 단계">
     {% for stage in statuses %}
     <li class="status-stage {% if loop.index0 < active_status_index %}completed{% elif loop.index0 == active_status_index %}active{% else %}pending{% endif %}" {% if loop.index0 == active_status_index %}aria-current="step"{% endif %}><span class="status-marker">{% if loop.index0 < active_status_index %}✓{% else %}{{ loop.index }}{% endif %}</span><span class="status-label">{{ stage.value }}</span></li>
     {% endfor %}
-  </ol>
+  </ol></div><div class="summary-delivery"><p class="summary-label">목표 납기일</p><p class="summary-value">{{ project.target_delivery_date or "미입력" }}</p></div><div class="summary-archive"><p class="summary-label">보관 상태</p><p class="summary-value">{{ "아카이브" if project.is_archived else "진행" }}</p></div></div>
 </section>
 <section class="card next-step"><h2>자료 등록</h2><p>Inventor BOM 또는 ERP BOM Excel을 끌어 놓거나 파일을 선택하면 열 매핑 검토로 이동합니다.</p>
   <form class="project-source-upload" method="post" action="/projects/{{ project.id }}/uploads/preview" enctype="multipart/form-data">
