@@ -8,8 +8,6 @@ import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from openpyxl import load_workbook
-
 
 class SpreadsheetCalculationError(RuntimeError):
     """계산 엔진 실행 또는 수식 오류로 고객용 출력이 중단된 경우다."""
@@ -37,6 +35,8 @@ def find_calculation_engine(configured_path: str | None = None) -> Path | None:
 
 def validate_calculated_workbook(path: Path) -> None:
     """계산 후 저장된 값에 Excel 오류가 남지 않았는지 확인한다."""
+
+    from openpyxl import load_workbook
 
     workbook = load_workbook(path, data_only=True, read_only=True)
     errors: list[str] = []

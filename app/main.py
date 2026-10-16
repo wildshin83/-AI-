@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -40,6 +42,8 @@ app = FastAPI(
     redoc_url=None,
     lifespan=lifespan,
 )
+css_path = Path(__file__).resolve().parent / "static" / "app.css"
+app.state.static_version = hashlib.sha256(css_path.read_bytes()).hexdigest()[:12]
 app.add_middleware(AuthenticationMiddleware)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(auth_router)

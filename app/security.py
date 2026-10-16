@@ -9,6 +9,7 @@ import json
 import os
 import secrets
 import time
+from dataclasses import dataclass
 from urllib.parse import quote, urlsplit
 
 from fastapi import Request
@@ -23,6 +24,60 @@ from app.models.auth import AuthUser
 COOKIE_NAME = "bom_session"
 SESSION_MAX_AGE = 12 * 60 * 60
 _development_secret = secrets.token_bytes(32)
+_USER_CACHE_TTL_SECONDS = 10
+_USER_CACHE_MAX_ENTRIES = 512
+
+
+@dataclass(frozen=True, slots=True)
+class SessionUser:
+    """요청 처리에 필요한 로그인 정보만 담는 짧은 수명 캐시 항목."""
+
+    id: int
+    display_name: str
+    is_admin: bool
+    must_change_password: bool
+
+
+_verified_users: dict[tuple[int, int], tuple[float, SessionUser]] = {}
+
+
+def _verified_user(identity: tuple[int, int]) -> SessionUser | None:
+    """같은 서버 인스턴스의 연속 요청에서 사용자 확인 DB 왕복을 줄인다."""
+
+    now = time.monotonic()
+    cached = _verified_users.get(identity)
+    if cached is not None:
+        expires_at, user = cached
+        if expires_at > now:
+            return user
+        _verified_users.pop(identity, None)
+
+    with SessionLocal() as session:
+        row = session.execute(
+            select(
+                AuthUser.id,
+                AuthUser.display_name,
+                AuthUser.is_admin,
+                AuthUser.must_change_password,
+            ).where(
+                AuthUser.id == identity[0],
+                AuthUser.auth_version == identity[1],
+                AuthUser.is_active.is_(True),
+            )
+        ).one_or_none()
+
+    if row is None:
+        return None
+
+    user = SessionUser(*row)
+    if len(_verified_users) >= _USER_CACHE_MAX_ENTRIES:
+        expired = [key for key, (expiry, _) in _verified_users.items() if expiry <= now]
+        for key in expired:
+            _verified_users.pop(key, None)
+        if len(_verified_users) >= _USER_CACHE_MAX_ENTRIES:
+            _verified_users.pop(next(iter(_verified_users)))
+    _verified_users[identity] = (now + _USER_CACHE_TTL_SECONDS, user)
+    return user
 
 
 def _secret() -> bytes:
@@ -112,18 +167,16 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             "/login", "/setup-admin", "/account-requests", "/account-requests/new", "/health"
         } or path.startswith("/static/")
         user = None
-        if path != "/health" and not path.startswith("/static/"):
+        has_session_cookie = bool(request.cookies.get(COOKIE_NAME))
+        needs_user_context = (
+            not path.startswith("/static/")
+            and path != "/health"
+            and (not public_path or has_session_cookie)
+        )
+        if needs_user_context:
             identity = _session_identity(request.cookies.get(COOKIE_NAME, ""))
             if identity:
-                with SessionLocal() as session:
-                    candidate = session.scalar(select(AuthUser).where(AuthUser.id == identity[0]))
-                    if (
-                        candidate is not None
-                        and candidate.is_active
-                        and candidate.auth_version == identity[1]
-                    ):
-                        user = candidate
-                        session.expunge(user)
+                user = _verified_user(identity)
 
         request.state.current_user = user
         if not public_path:
@@ -152,4 +205,6 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 return RedirectResponse("/account/password", status_code=303)
 
         response = await call_next(request)
+        if path.startswith("/static/") and response.status_code < 400:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         return response

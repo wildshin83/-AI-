@@ -32,3 +32,4 @@
 | 2026-10-16 | Vercel FastAPI 공개 라우팅 | catch-all rewrite가 로그인·헬스 경로에서 리다이렉트 루프를 일으켜 Vercel 권장 FastAPI 진입점으로 전환 | `app.main:app`을 공식 진입점으로 지정하고 catch-all rewrite 제거. Production 배포 `df7a6a8`에서 로그인 화면, PostgreSQL 헬스 응답, 최초 관리자 폼 확인 |
 | 2026-10-16 | 공개 계정 신청·관리자 승인 | 로그인 옆 계정 만들기, 승인 대기 신청 저장, 관리자 승인/반려 및 임시 비밀번호 등록, 관리자 이메일 SMTP 알림을 추가 | 마이그레이션 `20261016_0011` 추가. SMTP 환경변수와 원격 Supabase 마이그레이션 적용 후 운영 확인 필요 |
 | 2026-10-16 | 계정 요청 메일 수신 주소 | `BOM_ADMIN_NOTIFICATION_EMAIL` 설정으로 신청 알림 수신자를 지정할 수 있도록 추가 | 사용자 지정 주소 shs1202@shinjinmtec.co.kr. SMTP 인증 설정과 Vercel Production 환경변수 반영 후 실제 수신 확인 필요 |
+| 2026-10-16 | 응답속도 최적화 | 로그인 사용자 조회를 동일 인스턴스에서 10초 캐시하고, 프로젝트·미확인 경고 목록을 한 SQL 조회로 통합. Excel 라이브러리 지연 로딩과 콘텐츠 해시 기반 CSS 장기 캐시를 적용 | Ruff·Python 컴파일 검사 통과. 로컬 앱 import 시 openpyxl 미선 로딩 확인. 실제 Vercel 응답시간은 배포 후 측정 필요 |

@@ -8,7 +8,6 @@ from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from pathlib import Path
 
-from openpyxl import load_workbook
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -77,6 +76,8 @@ def import_erp_transactions(session: Session, *, upload_batch: UploadBatch) -> i
     현재 제공된 양식의 ``최종수정일``은 정렬 기준만 되며, 발주일이나 입고일로
     바꾸어 저장하지 않는다.
     """
+
+    from openpyxl import load_workbook
 
     if upload_batch.source_type != "erp_bom" or upload_batch.status != "confirmed":
         raise ValueError("확정된 ERP BOM 업로드만 ERP 이력으로 등록할 수 있습니다.")

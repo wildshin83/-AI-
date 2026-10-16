@@ -12,13 +12,6 @@ from sqlalchemy.orm import Session
 
 from app.config import paths, reference_material_path
 from app.db import get_session, is_sqlite_database
-from app.exporters.excel import (
-    export_bom,
-    export_bom_revision_comparison,
-    export_cost_summary,
-    export_customer_quote,
-    export_purchase_coordination,
-)
 from app.models.alerts import Alert
 from app.models.bom import BomItem, BomRevision
 from app.models.project import Project
@@ -29,7 +22,6 @@ from app.services.packages import (
     export_project_package,
     import_project_package,
 )
-from app.services.spreadsheet_calculation import SpreadsheetCalculationError, recalculate_workbook
 from app.storage.packages import create_local_backup, restore_local_backup
 
 router = APIRouter(tags=["operations"])
@@ -57,6 +49,8 @@ def operations_page(request: Request, project_id: int, session: Session = Depend
 
 @router.post("/projects/{project_id}/exports/bom")
 def bom_export(project_id: int, session: Session = Depends(get_session)):
+    from app.exporters.excel import export_bom
+
     project = _project_or_404(session, project_id)
     revision = session.scalar(
         select(BomRevision)
@@ -76,6 +70,8 @@ def bom_export(project_id: int, session: Session = Depends(get_session)):
 
 @router.post("/projects/{project_id}/exports/purchase-coordination")
 def purchase_coordination_export(project_id: int, session: Session = Depends(get_session)):
+    from app.exporters.excel import export_purchase_coordination
+
     project = _project_or_404(session, project_id)
     revision = session.scalar(
         select(BomRevision)
@@ -95,6 +91,8 @@ def purchase_coordination_export(project_id: int, session: Session = Depends(get
 
 @router.post("/projects/{project_id}/exports/bom-comparison")
 def bom_comparison_export(project_id: int, session: Session = Depends(get_session)):
+    from app.exporters.excel import export_bom_revision_comparison
+
     project = _project_or_404(session, project_id)
     revision = session.scalar(
         select(BomRevision)
@@ -110,6 +108,8 @@ def bom_comparison_export(project_id: int, session: Session = Depends(get_sessio
 
 @router.post("/projects/{project_id}/exports/cost-summary")
 def cost_summary_export(project_id: int, session: Session = Depends(get_session)):
+    from app.exporters.excel import export_cost_summary
+
     project = _project_or_404(session, project_id)
     quote = session.scalar(
         select(QuoteVersion)
@@ -130,6 +130,12 @@ def cost_summary_export(project_id: int, session: Session = Depends(get_session)
 
 @router.post("/projects/{project_id}/exports/customer-quote")
 def customer_quote_export(project_id: int, session: Session = Depends(get_session)):
+    from app.exporters.excel import export_customer_quote
+    from app.services.spreadsheet_calculation import (
+        SpreadsheetCalculationError,
+        recalculate_workbook,
+    )
+
     project = _project_or_404(session, project_id)
     quote = session.scalar(
         select(QuoteVersion)

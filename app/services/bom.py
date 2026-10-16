@@ -6,7 +6,6 @@ from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from pathlib import Path
 
-from openpyxl import load_workbook
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -38,6 +37,8 @@ def create_bom_revision(
     memo: str | None,
 ) -> BomRevision:
     """확정된 Inventor 업로드 한 건을 변경 불가 BOM Rev로 저장한다."""
+
+    from openpyxl import load_workbook
 
     if upload_batch.source_type != "inventor_bom" or upload_batch.status != "confirmed":
         raise ValueError("확정된 Inventor BOM 업로드만 BOM Rev로 등록할 수 있습니다.")

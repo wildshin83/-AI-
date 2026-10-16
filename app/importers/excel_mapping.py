@@ -8,8 +8,6 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-from openpyxl import load_workbook
-
 
 class WorkbookKind(StrEnum):
     INVENTOR_BOM = "inventor_bom"
@@ -128,6 +126,8 @@ def _find_header_row(rows: list[tuple[Any, ...]], workbook_kind: WorkbookKind) -
 
 def preview_mapping(path: Path | BytesIO, workbook_kind: WorkbookKind) -> MappingPreview:
     """원본을 변경하지 않고 헤더와 자동 매핑 결과를 확인한다."""
+
+    from openpyxl import load_workbook
 
     workbook = load_workbook(path, read_only=True, data_only=True)
     worksheet = workbook.active

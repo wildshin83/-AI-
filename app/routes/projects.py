@@ -17,7 +17,6 @@ from app.services.projects import (
     ProjectCreateInput,
     ProjectNumberAlreadyExistsError,
     create_project,
-    list_projects,
     set_project_archived,
 )
 
@@ -44,14 +43,34 @@ def project_list(
     include_archived: bool = False,
     session: Session = Depends(get_session),
 ):
-    projects = list_projects(session, include_archived=include_archived, search=search)
-    unread_counts = dict(
-        session.execute(
-            select(Alert.project_id, func.count(Alert.id))
-            .where(Alert.status.in_(["unread", "acknowledged", "in_progress"]))
-            .group_by(Alert.project_id)
-        ).all()
+    unread_statuses = ("unread", "acknowledged", "in_progress")
+    query = (
+        select(Project, func.count(Alert.id))
+        .outerjoin(
+            Alert,
+            (Alert.project_id == Project.id) & Alert.status.in_(unread_statuses),
+        )
+        .group_by(Project.id)
     )
+    if not include_archived:
+        query = query.where(Project.is_archived.is_(False))
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        query = query.where(
+            Project.project_number.ilike(term)
+            | Project.project_name.ilike(term)
+            | Project.customer_name.ilike(term)
+            | Project.equipment_unit.ilike(term)
+            | Project.manager_name.ilike(term)
+        )
+    query = query.order_by(
+        Project.is_archived,
+        Project.target_delivery_date,
+        Project.created_at.desc(),
+    )
+    rows = session.execute(query).all()
+    projects = [project for project, _ in rows]
+    unread_counts = {project.id: count for project, count in rows if count}
     return templates.TemplateResponse(
         request,
         "projects/list.html",

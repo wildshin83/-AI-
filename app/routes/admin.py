@@ -9,7 +9,6 @@ from io import BytesIO
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 from fastapi.templating import Jinja2Templates
-from openpyxl import Workbook, load_workbook
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -39,6 +38,8 @@ HEADER_ALIASES = {
 def account_template() -> StreamingResponse:
     """계정 업로드용 빈 Excel 서식을 제공한다."""
 
+    from openpyxl import Workbook
+
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "계정"
@@ -62,6 +63,8 @@ def _clean_header(value: object) -> str:
 
 
 def _parse_workbook(contents: bytes, session: Session) -> tuple[list[dict[str, str]], list[str]]:
+    from openpyxl import load_workbook
+
     try:
         workbook = load_workbook(BytesIO(contents), read_only=True, data_only=True)
         sheet = workbook.active
