@@ -6,7 +6,7 @@ CS사업부 기술팀용 BOM·ERP·견적 검토 서비스입니다. 앱은 팀�
 
 - 앱은 각 사용자 PC에서 실행합니다.
 - 목표 구조에서 프로젝트·BOM·ERP·가격·견적 데이터는 Supabase PostgreSQL에 저장합니다.
-- Supabase는 DB만 사용합니다. 인증과 파일 저장은 제공하지 않으며, 도면·원본·첨부 파일은 PC별 앱 데이터 폴더에 보관합니다.
+- 로컬 앱은 Supabase DB와 PC별 파일 저장을 사용합니다. Vercel 공개 테스트 모드에서는 Excel·도면 업로드 원본만 Supabase PostgreSQL에 저장합니다.
 - Supabase 연결 기반은 구현됐습니다. 프로젝트 연결 문자열 설정, 마이그레이션 적용, 기존 데이터 이관, 운영 권한·백업 검증은 P10에서 진행 중입니다.
 - Excel 원본, 도면, 가격 확정, 견적 제출본은 변경 이력과 함께 보존합니다.
 - ERP 후보값은 자동 적용하지 않습니다.
@@ -14,6 +14,7 @@ CS사업부 기술팀용 BOM·ERP·견적 검토 서비스입니다. 앱은 팀�
 
 상세 요구사항은 `prd.md`, 실제 Excel 열 매핑과 제약은 `EXCEL_MAPPING_RULES.md`, 구현 진행 상태는 `plan.md`를 참조합니다.
 Supabase PostgreSQL 설정은 `SUPABASE_DATABASE_SETUP.md`를 참조합니다.
+로그인 없는 Vercel 공개 테스트 배포는 반드시 `VERCEL_DEMO_DEPLOYMENT.md`의 별도 테스트 DB 격리 절차를 따릅니다.
 
 ## 참고자료
 

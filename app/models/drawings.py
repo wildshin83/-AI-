@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, LargeBinary, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -28,6 +28,7 @@ class DrawingFile(Base):
     file_type: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
     original_file_name: Mapped[str] = mapped_column(String(300), nullable=False)
     stored_path: Mapped[str] = mapped_column(Text(), nullable=False)
+    file_content: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
     uploaded_by: Mapped[str] = mapped_column(String(100), nullable=False)
     memo: Mapped[str | None] = mapped_column(Text(), nullable=True)

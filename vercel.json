@@ -1,0 +1,6 @@
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
+  "env": {
+    "BOM_APP_DATA_DIR": "/tmp/bom-management-service"
+  }
+}

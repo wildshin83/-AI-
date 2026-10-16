@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+from io import BytesIO
 from pathlib import Path
 
 from openpyxl import load_workbook
@@ -42,7 +43,12 @@ def create_bom_revision(
         raise ValueError("확정된 Inventor BOM 업로드만 BOM Rev로 등록할 수 있습니다.")
     if not revision_name.strip():
         raise ValueError("BOM Rev 이름은 필수입니다.")
-    workbook = load_workbook(Path(upload_batch.stored_path), read_only=True, data_only=True)
+    workbook_source = (
+        BytesIO(upload_batch.file_content)
+        if upload_batch.file_content is not None
+        else Path(upload_batch.stored_path)
+    )
+    workbook = load_workbook(workbook_source, read_only=True, data_only=True)
     worksheet = workbook[upload_batch.sheet_name] if upload_batch.sheet_name else workbook.active
     headers = [
         cell.value

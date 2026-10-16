@@ -1,6 +1,9 @@
 """도면 파일 업로드·열람 라우트."""
 
+import os
 from pathlib import Path
+from urllib.parse import quote
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse, RedirectResponse
@@ -71,11 +74,17 @@ async def drawing_upload(
     ):
         raise HTTPException(status_code=422, detail="선택한 BOM 연결을 확인하세요.")
     try:
-        stored_path = store_drawing_upload(
-            project_id=project.id,
-            original_file_name=source_file.filename,
-            content=await source_file.read(),
-        )
+        content = await source_file.read()
+        if len(content) > 4 * 1024 * 1024:
+            raise HTTPException(status_code=422, detail="업로드 파일은 4MB 이하만 가능합니다.")
+        if os.getenv("VERCEL"):
+            stored_path = Path(f"database://drawings/{uuid4().hex}")
+        else:
+            stored_path = store_drawing_upload(
+                project_id=project.id,
+                original_file_name=source_file.filename,
+                content=content,
+            )
         register_drawing_file(
             session,
             project_id=project.id,
@@ -86,6 +95,7 @@ async def drawing_upload(
             file_type=file_type,
             original_file_name=source_file.filename,
             stored_path=stored_path,
+            file_content=content if os.getenv("VERCEL") else None,
             mime_type=source_file.content_type,
             uploaded_by=uploaded_by,
             memo=memo,
@@ -100,7 +110,18 @@ async def drawing_upload(
 @router.get("/drawings/{drawing_file_id}/content")
 def drawing_content(drawing_file_id: int, session: Session = Depends(get_session)):
     drawing = session.get(DrawingFile, drawing_file_id)
-    if drawing is None or not Path(drawing.stored_path).is_file():
+    if drawing is None:
+        raise HTTPException(status_code=404, detail="보관된 파일을 찾을 수 없습니다.")
+    if drawing.file_content is not None:
+        from fastapi.responses import Response
+
+        download_name = quote(drawing.original_file_name, safe="")
+        return Response(
+            content=drawing.file_content,
+            media_type=drawing.mime_type or "application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{download_name}"},
+        )
+    if not Path(drawing.stored_path).is_file():
         raise HTTPException(status_code=404, detail="보관된 파일을 찾을 수 없습니다.")
     return FileResponse(
         drawing.stored_path, media_type=drawing.mime_type, filename=drawing.original_file_name

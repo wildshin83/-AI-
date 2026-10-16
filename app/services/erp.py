@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
+from io import BytesIO
 from pathlib import Path
 
 from openpyxl import load_workbook
@@ -85,7 +86,12 @@ def import_erp_transactions(session: Session, *, upload_batch: UploadBatch) -> i
     if already_imported is not None:
         raise ErpImportAlreadyExistsError("선택한 ERP 업로드는 이미 이력으로 등록되어 있습니다.")
 
-    workbook = load_workbook(Path(upload_batch.stored_path), read_only=True, data_only=True)
+    workbook_source = (
+        BytesIO(upload_batch.file_content)
+        if upload_batch.file_content is not None
+        else Path(upload_batch.stored_path)
+    )
+    workbook = load_workbook(workbook_source, read_only=True, data_only=True)
     worksheet = workbook[upload_batch.sheet_name] if upload_batch.sheet_name else workbook.active
     header_row = upload_batch.header_row or 1
     headers = [

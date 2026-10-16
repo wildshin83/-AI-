@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -57,17 +61,24 @@ async def upload_preview(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
     try:
-        stored_path = store_excel_upload(
-            project_id=project.id,
-            original_file_name=source_file.filename,
-            content=await source_file.read(),
-        )
+        content = await source_file.read()
+        if len(content) > 4 * 1024 * 1024:
+            raise ValueError("업로드 파일은 4MB 이하만 가능합니다.")
+        if os.getenv("VERCEL"):
+            stored_path = Path(f"database://uploads/{uuid4().hex}")
+        else:
+            stored_path = store_excel_upload(
+                project_id=project.id,
+                original_file_name=source_file.filename,
+                content=content,
+            )
         batch, preview = create_preview_batch(
             session,
             project_id=project.id,
             source_type=source_type,
             original_file_name=source_file.filename,
             stored_path=stored_path,
+            file_content=content if os.getenv("VERCEL") else None,
         )
     except (ValueError, OSError) as error:
         return templates.TemplateResponse(

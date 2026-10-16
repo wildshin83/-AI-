@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 
 from sqlalchemy import select
@@ -25,10 +26,13 @@ def create_preview_batch(
     source_type: WorkbookKind,
     original_file_name: str,
     stored_path: Path,
+    file_content: bytes | None = None,
 ) -> tuple[UploadBatch, MappingPreview]:
     """원본을 보관하고 자동 매핑 결과를 확정 전 미리보기로 만든다."""
 
-    preview = preview_mapping(stored_path, source_type)
+    preview = preview_mapping(
+        BytesIO(file_content) if file_content is not None else stored_path, source_type
+    )
     profile = session.scalar(
         select(MappingProfile).where(MappingProfile.source_type == source_type.value)
     )
@@ -53,6 +57,7 @@ def create_preview_batch(
         status="preview",
         original_file_name=original_file_name,
         stored_path=str(stored_path),
+        file_content=file_content,
         sheet_name=preview.sheet_name,
         header_row=preview.header_row,
         mapping=preview.mapping,

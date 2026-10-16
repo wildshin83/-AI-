@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
@@ -125,7 +126,7 @@ def _find_header_row(rows: list[tuple[Any, ...]], workbook_kind: WorkbookKind) -
     return best_row
 
 
-def preview_mapping(path: Path, workbook_kind: WorkbookKind) -> MappingPreview:
+def preview_mapping(path: Path | BytesIO, workbook_kind: WorkbookKind) -> MappingPreview:
     """원본을 변경하지 않고 헤더와 자동 매핑 결과를 확인한다."""
 
     workbook = load_workbook(path, read_only=True, data_only=True)

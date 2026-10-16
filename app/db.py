@@ -85,12 +85,16 @@ def create_database_engine():
             connect_args={"check_same_thread": False},
             future=True,
         )
+    pool_options = (
+        {"pool_size": 1, "max_overflow": 0}
+        if os.getenv("VERCEL")
+        else {"pool_size": 2, "max_overflow": 1}
+    )
     return create_engine(
         url,
         connect_args={"prepare_threshold": None},
         pool_pre_ping=True,
-        pool_size=2,
-        max_overflow=1,
+        **pool_options,
         pool_recycle=1800,
         future=True,
     )
