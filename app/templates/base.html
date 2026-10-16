@@ -9,7 +9,14 @@
 <body>
   <header class="site-header">
     <a href="/projects" class="brand">BOM 관리 서비스</a>
-    <span class="environment">로컬 MVP</span>
+    {% if request.state.current_user %}
+    <nav class="account-nav" aria-label="계정 메뉴">
+      <span class="environment">{{ request.state.current_user.display_name }} · {{ "관리자" if request.state.current_user.is_admin else "사용자" }}</span>
+      {% if request.state.current_user.is_admin %}<a href="/admin/users">사용자 관리</a>{% endif %}
+      <a href="/account/password">비밀번호 변경</a>
+      <form method="post" action="/logout"><button class="header-button" type="submit">로그아웃</button></form>
+    </nav>
+    {% else %}<span class="environment">로그인 필요</span>{% endif %}
   </header>
   <main class="container">{% block content %}{% endblock %}</main>
 </body>

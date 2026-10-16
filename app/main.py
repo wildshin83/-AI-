@@ -12,7 +12,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import paths
 from app.db import engine, is_sqlite_database
+from app.routes.admin import router as admin_router
 from app.routes.alerts import router as alerts_router
+from app.routes.auth import router as auth_router
 from app.routes.bom import router as bom_router
 from app.routes.drawings import router as drawings_router
 from app.routes.erp import router as erp_router
@@ -20,6 +22,7 @@ from app.routes.operations import router as operations_router
 from app.routes.projects import router as projects_router
 from app.routes.quotes import router as quotes_router
 from app.routes.uploads import router as uploads_router
+from app.security import AuthenticationMiddleware
 
 
 @asynccontextmanager
@@ -37,7 +40,10 @@ app = FastAPI(
     redoc_url=None,
     lifespan=lifespan,
 )
+app.add_middleware(AuthenticationMiddleware)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(projects_router)
 app.include_router(operations_router)
 app.include_router(uploads_router)

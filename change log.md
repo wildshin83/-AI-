@@ -28,3 +28,4 @@
 | 2026-10-16 | 아키텍처 기준 | Supabase PostgreSQL을 업무 DB 목표로 확정하고 Auth·Storage는 범위에서 제외. 현재 SQLite 구현은 미전환 상태로 표시하고 로컬 첨부 파일·DB 백업 운영의 후속 검토를 기록 | AGENTS.md, PRD, 계획, README, 백업 지침 간 기준을 맞춤. 애플리케이션 코드는 아직 변경하지 않음 |
 | 2026-10-16 | P10 기반 | 런타임과 DDL 마이그레이션 URL 분리, 제한된 앱 역할 지침, `BOM_DATABASE_URL` 기반 psycopg 연결, TLS 기본값, Alembic 연결, DB 헬스체크, 원격 DB에서 로컬 SQLite 백업·복원 차단을 추가 | 실제 Supabase 자격증명이 없어 원격 연결·마이그레이션은 실행하지 않음. 설정·운영 절차를 `SUPABASE_DATABASE_SETUP.md`, 미연결 상태를 `error.md`에 기록 |
 | 2026-10-16 | Vercel 공개 테스트 | PostgreSQL 원본 파일 저장, 4MB 업로드 제한, FastAPI 진입점·의존성·rewrite 설정 및 테스트 DB 격리 절차를 추가 | Ruff와 Python 컴파일 검사 통과. 자동 테스트와 원격 DB 마이그레이션은 미실행 |
+| 2026-10-16 | 인증·계정 관리 | 앱 전체 로그인 게이트, PBKDF2 비밀번호 저장, 로그인 잠금, 최초 관리자 설정, 관리자 전용 계정 등록·Excel 일괄 등록, 첫 로그인 비밀번호 변경을 추가 | 마이그레이션 0010 추가. 공개 배포 전 환경 변수·접근 범위를 확인해야 함 |

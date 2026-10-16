@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}초기 관리자 설정 | BOM 관리 서비스{% endblock %}
+{% block content %}
+<section class="auth-card card">
+  <p class="eyebrow">최초 1회 설정</p>
+  <h1>관리자 계정 만들기</h1>
+  <p>배포 설정에 등록된 일회용 키가 있어야 관리자 계정을 만들 수 있습니다.</p>
+  {% if error %}<p class="error-message" role="alert">{{ error }}</p>{% endif %}
+  <form class="form-grid single-column" method="post" action="/setup-admin">
+    <label>일회용 관리자 설정 키<input type="password" name="setup_key" autocomplete="off" required></label>
+    <label>관리자 이름<input type="text" name="display_name" required maxlength="120"></label>
+    <label>관리자 이메일<input type="email" name="email" autocomplete="username" required maxlength="254"></label>
+    <label>비밀번호<input type="password" name="password" autocomplete="new-password" required minlength="12" maxlength="256"><small>12자 이상으로 설정하세요.</small></label>
+    <div class="form-actions"><button class="button primary" type="submit">관리자 계정 생성</button></div>
+  </form>
+</section>
+{% endblock %}

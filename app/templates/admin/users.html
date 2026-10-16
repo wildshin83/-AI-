@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}사용자 관리 | BOM 관리 서비스{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div><p class="eyebrow">관리자 전용</p><h1>사용자 계정 관리</h1><p>계정은 관리자만 등록할 수 있으며, 신규 사용자는 첫 로그인 때 비밀번호를 변경합니다.</p></div>
+  <a class="button" href="/projects">프로젝트로 돌아가기</a>
+</section>
+{% if message %}<p class="success-message" role="status">{{ message }}</p>{% endif %}
+{% if errors %}<section class="error-message" role="alert"><strong>Excel을 등록하지 않았습니다.</strong><ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul></section>{% endif %}
+{% if single_error %}<p class="error-message" role="alert">{{ single_error }}</p>{% endif %}
+<section class="card">
+  <h2>계정 직접 등록</h2>
+  <form class="form-grid" method="post" action="/admin/users">
+    <label>이름<input name="display_name" required maxlength="120"></label>
+    <label>이메일<input type="email" name="email" required maxlength="254"></label>
+    <label>임시 비밀번호<input type="password" name="temporary_password" required minlength="12" maxlength="256" autocomplete="new-password"></label>
+    <div class="form-actions"><button class="button primary" type="submit">계정 등록</button></div>
+  </form>
+</section>
+<section class="card">
+  <h2>Excel로 계정 일괄 등록</h2>
+  <p>첫 번째 시트에 <code>email</code>, <code>name</code>, <code>temporary_password</code> 열을 넣으세요. 한글 열 이름도 사용할 수 있습니다. 최대 500명, 파일 2 MB까지 지원합니다.</p>
+  <p><a href="/admin/users/template">빈 계정 Excel 서식 다운로드</a></p>
+  <p>계정 Excel에는 임시 비밀번호가 들어가므로 접근 권한을 제한해 전달하고 등록 후 안전하게 폐기하세요.</p>
+  <form class="upload-form" method="post" action="/admin/users/import" enctype="multipart/form-data">
+    <label>계정 Excel 파일 (.xlsx)<input type="file" name="account_file" accept=".xlsx" required></label>
+    <button class="button primary" type="submit">계정 등록</button>
+  </form>
+</section>
+<section class="table-wrap account-table">
+  <table>
+    <thead><tr><th>이름</th><th>이메일</th><th>권한</th><th>상태</th><th>비밀번호 상태</th><th>등록일</th></tr></thead>
+    <tbody>{% for user in users %}
+      <tr><td>{{ user.display_name }}</td><td>{{ user.email }}</td><td>{{ "관리자" if user.is_admin else "사용자" }}</td><td>{{ "활성" if user.is_active else "비활성" }}</td><td>{{ "첫 로그인 변경 필요" if user.must_change_password else "설정 완료" }}</td><td>{{ user.created_at.strftime("%Y-%m-%d") if user.created_at else "-" }}</td></tr>
+    {% else %}<tr><td colspan="6">등록된 계정이 없습니다.</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}

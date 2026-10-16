@@ -2,6 +2,7 @@
 
 from app.models.alerts import Alert, AlertAction, ItemAlertRule, PriceRecord
 from app.models.audit import AuditLog
+from app.models.auth import AuthUser
 from app.models.bom import BomItem, BomRevision
 from app.models.drawings import DrawingFile
 from app.models.erp import ErpMatch, ERPTransaction
@@ -12,6 +13,7 @@ from app.models.quotes import QuoteAdjustment, QuoteItem, QuoteVersion
 from app.models.settings import Setting
 
 __all__ = [
+    "AuthUser",
     "AuditLog",
     "Alert",
     "AlertAction",
