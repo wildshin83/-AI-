@@ -19,5 +19,48 @@
     {% else %}<span class="environment">로그인 필요</span>{% endif %}
   </header>
   <main class="container">{% block content %}{% endblock %}</main>
+  <script>
+  (() => {
+    document.querySelectorAll('input[type="file"]').forEach((input) => {
+      let zone = input.closest("label");
+      if (!zone) {
+        zone = document.createElement("label");
+        zone.className = "file-drop-label";
+        zone.append(document.createTextNode("파일 선택"));
+        input.parentNode.insertBefore(zone, input);
+        zone.append(input);
+      }
+      zone.classList.add("file-drop-zone");
+      const hint = document.createElement("span");
+      hint.className = "file-drop-hint";
+      hint.textContent = "파일을 여기에 끌어 놓거나 클릭해 선택";
+      zone.append(hint);
+      const showFiles = () => {
+        hint.textContent = input.files.length
+          ? [...input.files].map((file) => file.name).join(", ")
+          : "파일을 여기에 끌어 놓거나 클릭해 선택";
+      };
+      input.addEventListener("change", showFiles);
+      zone.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        zone.classList.add("dragging");
+      });
+      zone.addEventListener("dragleave", (event) => {
+        if (!zone.contains(event.relatedTarget)) zone.classList.remove("dragging");
+      });
+      zone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        zone.classList.remove("dragging");
+        const files = [...(event.dataTransfer?.files || [])];
+        if (!input.multiple) files.splice(1);
+        if (!files.length) return;
+        const transfer = new DataTransfer();
+        files.forEach((file) => transfer.items.add(file));
+        input.files = transfer.files;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    });
+  })();
+  </script>
 </body>
 </html>

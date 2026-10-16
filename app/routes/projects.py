@@ -253,7 +253,17 @@ def project_detail(request: Request, project_id: int, session: Session = Depends
         )
     )
     return templates.TemplateResponse(
-        request, "projects/detail.html", {"project": project, "unread_count": unread_count or 0}
+        request,
+        "projects/detail.html",
+        {
+            "project": project,
+            "unread_count": unread_count or 0,
+            "statuses": list(ProjectStatus),
+            "active_status_index": next(
+                (index for index, item in enumerate(ProjectStatus) if item.value == project.status),
+                0,
+            ),
+        },
     )
 
 
