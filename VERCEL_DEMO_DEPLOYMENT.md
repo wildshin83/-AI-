@@ -31,7 +31,8 @@ GitHub `main` 브랜치에서 Vercel로 배포하는 인증형 BOM·ERP·견적 
 ## Vercel 설정
 
 - Root Directory: 저장소 루트
-- Python 진입점: `api/index.py`; 경로 설정: `vercel.json`
+- Python 진입점: `app/main.py`의 FastAPI 앱 (`pyproject.toml`의 `tool.vercel.entrypoint`)
+- Vercel이 FastAPI 경로를 직접 처리하므로 catch-all rewrite를 추가하지 않는다.
 - Production 환경 변수: `BOM_DATABASE_URL`, `BOM_SESSION_SECRET`, `BOM_ADMIN_SETUP_KEY`
 - DB URL에는 Transaction Pooler 주소(6543)를 사용한다. `BOM_MIGRATION_DATABASE_URL`과 관리자 DB 암호를 별도로 등록하지 않는다.
 - `BOM_APP_DATA_DIR`은 `/tmp/bom-management-service`로 설정한다.
