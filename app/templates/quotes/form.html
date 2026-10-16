@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading"><div><h1>견적 차수 작성</h1><p>{{ project.project_name }}</p></div></section>
+{% if error %}<p class="error-message">{{ error }}</p>{% endif %}
+<form class="card form-grid" method="post" action="/projects/{{ project.id }}/quotes">
+  <label>기준 BOM Rev *<select name="bom_revision_id" required>{% for revision in revisions %}<option value="{{ revision.id }}">{{ revision.revision_name }}</option>{% endfor %}</select></label>
+  <label>작성자 *<input name="created_by" required></label>
+  <div class="form-actions"><button class="button primary">다음 견적 차수 생성</button></div>
+</form>
+{% endblock %}

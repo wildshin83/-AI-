@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading"><div><h1>로컬 백업 복원 완료</h1><p>백업의 DB와 첨부 파일을 현재 PC에 복원했습니다.</p></div><a class="button" href="/projects">프로젝트 목록</a></section>
+<section class="card"><h2>복원 전 자동 백업</h2><p>복원 직전 상태는 <code>{{ pre_restore_backup }}</code> 파일로 별도 보존했습니다.</p><p>브라우저를 새로 열어 복원된 프로젝트와 도면 파일을 확인하세요.</p></section>
+{% endblock %}

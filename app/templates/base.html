@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}BOM 관리 서비스{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <a href="/projects" class="brand">BOM 관리 서비스</a>
+    <span class="environment">로컬 MVP</span>
+  </header>
+  <main class="container">{% block content %}{% endblock %}</main>
+</body>
+</html>

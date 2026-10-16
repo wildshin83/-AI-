@@ -1,0 +1,11 @@
+README.md
+pyproject.toml
+app/__init__.py
+app/config.py
+app/db.py
+app/main.py
+bom_management_service.egg-info/PKG-INFO
+bom_management_service.egg-info/SOURCES.txt
+bom_management_service.egg-info/dependency_links.txt
+bom_management_service.egg-info/requires.txt
+bom_management_service.egg-info/top_level.txt

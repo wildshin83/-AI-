@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Excel 업로드 | BOM 관리 서비스{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">{{ project.project_number }}</p><h1>Excel 업로드</h1><p>원본 파일은 변경하지 않고 프로젝트 자료로 보관합니다.</p></div><a class="button" href="/projects/{{ project.id }}">프로젝트</a></section>
+{% if error %}<p class="error-message">{{ error }}</p>{% endif %}
+<form class="card form-grid" method="post" action="/projects/{{ project.id }}/uploads/preview" enctype="multipart/form-data">
+  <label>자료 유형 *<select name="source_type"><option value="inventor_bom">Inventor BOM</option><option value="erp_bom">ERP BOM</option></select></label>
+  <label>Excel 파일 *<input type="file" name="source_file" accept=".xlsx,.xlsm" required></label>
+  <div class="form-actions"><button class="button primary" type="submit">매핑 미리보기</button></div>
+</form>
+{% endblock %}

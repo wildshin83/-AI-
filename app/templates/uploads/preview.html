@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}열 매핑 확인 | BOM 관리 서비스{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">{{ project.project_number }} · {{ batch.original_file_name }}</p><h1>열 매핑 확인</h1><p>{{ batch.sheet_name }} 시트 {{ batch.header_row }}행을 헤더로 인식했습니다. 확인 후 확정하세요.</p></div><a class="button" href="/projects/{{ project.id }}/uploads/new">다시 업로드</a></section>
+{% if error %}<p class="error-message">{{ error }}</p>{% endif %}
+{% if issues %}<section class="notice-card"><h2>확인 필요</h2><ul>{% for issue in issues %}<li>{{ issue.message }}</li>{% endfor %}</ul></section>{% endif %}
+<form class="card mapping-table" method="post" action="/uploads/{{ batch.id }}/confirm"><table><thead><tr><th>서비스 필드</th><th>필수</th><th>Excel 열</th></tr></thead><tbody>{% for rule in rules %}<tr><td>{{ rule.field }}</td><td>{{ "필수" if rule.required else "선택" }}</td><td><select name="mapping_{{ rule.field }}"><option value="">선택 안 함</option>{% for header in headers %}<option value="{{ header }}" {% if mapping.get(rule.field) == header %}selected{% endif %}>{{ header }}</option>{% endfor %}</select></td></tr>{% endfor %}</tbody></table><div class="form-actions"><button class="button primary" type="submit">매핑 확정 및 원본 보관</button></div></form>
+{% endblock %}

@@ -1,0 +1,2 @@
+{% extends "base.html" %}
+{% block content %}<section class="page-heading"><div><h1>프로젝트 패키지 차이 확인</h1><p>가져오기 전에 기존 로컬 데이터와의 충돌 여부를 확인합니다.</p></div><a class="button" href="/projects">프로젝트 목록</a></section><section class="card"><h2>패키지 프로젝트</h2><p>{{ incoming_project }}</p><p>현재 로컬 프로젝트 존재: {{ "예" if local_exists else "아니오" }}</p><p>{{ action_required }}</p><p>자동 덮어쓰기: {{ "허용" if automatic_overwrite else "허용 안 함" }}</p></section>{% endblock %}

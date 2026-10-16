@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}프로젝트 등록 | BOM 관리 서비스{% endblock %}
+{% block content %}
+<section class="page-heading"><div><h1>프로젝트 등록</h1><p>별표(*) 항목은 필수입니다.</p></div><a class="button" href="/projects">목록</a></section>
+{% if error %}<p class="error-message">{{ error }}</p>{% endif %}
+<form class="card form-grid" method="post" action="/projects">
+  <label>프로젝트 번호 *<input name="project_number" required value="{{ project.project_number if project else '' }}"></label>
+  <label>프로젝트명 *<input name="project_name" required value="{{ project.project_name if project else '' }}"></label>
+  <label>고객사 *<input name="customer_name" required value="{{ project.customer_name if project else '' }}"></label>
+  <label>장비명/호기 *<input name="equipment_unit" required value="{{ project.equipment_unit if project else '' }}"></label>
+  <label>담당자 *<input name="manager_name" required value="{{ project.manager_name if project else '' }}"></label>
+  <label>진행 상태 *<select name="project_status">{% for item in statuses %}<option value="{{ item.value }}" {% if project and project.status == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}</select></label>
+  <label>목표 납기일<input type="date" name="target_delivery_date" value="{{ project.target_delivery_date if project and project.target_delivery_date else '' }}"></label>
+  <div class="form-actions"><button class="button primary" type="submit">등록</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ project.project_name }} | BOM 관리 서비스{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">{{ project.project_number }}</p><h1>{{ project.project_name }}</h1><p>{{ project.customer_name }} · {{ project.equipment_unit }} · 담당 {{ project.manager_name }}</p></div><a class="button" href="/projects">목록</a></section>
+<section class="card project-summary">
+  <dl><div><dt>진행 상태</dt><dd>{{ project.status }}</dd></div><div><dt>목표 납기일</dt><dd>{{ project.target_delivery_date or "미입력" }}</dd></div><div><dt>보관 상태</dt><dd>{{ "아카이브" if project.is_archived else "진행" }}</dd></div></dl>
+</section>
+<section class="card next-step"><h2>자료 등록</h2><p>Inventor BOM 또는 ERP BOM Excel을 업로드하고 자동 열 매핑을 검토하세요.</p><a class="button primary" href="/projects/{{ project.id }}/uploads/new">Excel 업로드</a> <a class="button" href="/projects/{{ project.id }}/bom/new">BOM Rev 등록</a> <a class="button" href="/projects/{{ project.id }}/erp/new">ERP 이력 등록</a> <a class="button" href="/projects/{{ project.id }}/alerts">경고·조치{% if unread_count %} ({{ unread_count }}){% endif %}</a> <a class="button" href="/projects/{{ project.id }}/quotes/new">견적 차수 작성</a> <a class="button" href="/projects/{{ project.id }}/drawings">도면·파일</a> <a class="button" href="/projects/{{ project.id }}/operations">출력·교환</a></section>
+{% if project.is_archived %}
+<form method="post" action="/projects/{{ project.id }}/restore"><button class="button" type="submit">프로젝트 복원</button></form>
+{% else %}
+<form method="post" action="/projects/{{ project.id }}/archive"><button class="button danger" type="submit">프로젝트 아카이브</button></form>
+{% endif %}
+{% endblock %}

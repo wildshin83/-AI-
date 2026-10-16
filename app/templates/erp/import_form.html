@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading"><div><h1>ERP 이력 등록</h1><p>{{ project.project_name }}</p></div></section>
+{% if error %}<p class="error-message">{{ error }}</p>{% endif %}
+<form class="card form-grid" method="post" action="/projects/{{ project.id }}/erp">
+  <label>확정 ERP 업로드 *
+    <select name="upload_batch_id" required>
+      {% for upload in uploads %}<option value="{{ upload.id }}" {% if upload.id in imported_ids %}disabled{% endif %}>{{ upload.original_file_name }}{% if upload.id in imported_ids %} (등록 완료){% endif %}</option>{% endfor %}
+    </select>
+  </label>
+  <p>현재 Excel의 ‘최종수정일’은 ERP 기준 일시로만 보관합니다. 발주·입고 실적은 추후 해당 열이 있는 양식에서 처리합니다.</p>
+  <div class="form-actions"><button class="button primary">ERP 이력 등록</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: bom-management-service
+Version: 0.1.0
+Summary: 로컬 설치형 BOM·ERP·견적 검토 서비스
+Requires-Python: >=3.11
+Requires-Dist: alembic<2,>=1.13
+Requires-Dist: fastapi<1,>=0.115
+Requires-Dist: jinja2<4,>=3.1
+Requires-Dist: openpyxl<4,>=3.1
+Requires-Dist: python-multipart<1,>=0.0.9
+Requires-Dist: sqlalchemy<3,>=2.0
+Requires-Dist: uvicorn[standard]<1,>=0.30
+Provides-Extra: dev
+Requires-Dist: httpx<1,>=0.27; extra == "dev"
+Requires-Dist: pytest<9,>=8.0; extra == "dev"
+Requires-Dist: ruff<1,>=0.6; extra == "dev"
+Provides-Extra: package
+Requires-Dist: pyinstaller<7,>=6.0; extra == "package"

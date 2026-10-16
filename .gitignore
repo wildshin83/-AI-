@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+
+# Local application data
+data/
+backups/
+logs/
+exports/
+
+# Build artifacts
+build/
+dist/
+*.spec
+
+# Environment files
+.env

@@ -1,0 +1,15 @@
+alembic<2,>=1.13
+fastapi<1,>=0.115
+jinja2<4,>=3.1
+openpyxl<4,>=3.1
+python-multipart<1,>=0.0.9
+sqlalchemy<3,>=2.0
+uvicorn[standard]<1,>=0.30
+
+[dev]
+httpx<1,>=0.27
+pytest<9,>=8.0
+ruff<1,>=0.6
+
+[package]
+pyinstaller<7,>=6.0

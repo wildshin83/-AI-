@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">{{ revision.revision_name }}</p><h1>ERP 후보 검토</h1><p>{{ item.drawing_number }} · {{ item.component or item.title or '-' }}</p></div><a class="button" href="/bom/{{ revision.id }}">BOM으로</a></section>
+{% if error %}<p class="error-message">{{ error }}</p>{% endif %}
+{% if applied_match %}<section class="card"><h2>현재 확정 후보</h2><p>{{ applied_transaction.part_number }} · {{ applied_transaction.specification or '-' }} · {{ applied_transaction.supplier or '-' }}</p><p>방식: {{ applied_match.match_method }} / 확정자: {{ applied_match.confirmed_by }} / 근거: {{ applied_match.confirmation_note }}</p></section>{% endif %}
+<section class="card"><h2>후보 검색 기준</h2><p>최근 1년 이력만 표시합니다. 도면번호 일치 후보가 있으면 규격 후보는 표시하지 않습니다. ‘최종수정일’은 거래일이 아닌 ERP 기준 일시입니다.</p></section>
+<form class="card form-grid" method="get" action="/bom/items/{{ item.id }}/erp-candidates"><label>도면번호 변경품 수동 연결<input name="manual_part_number" value="{{ manual_part_number }}" placeholder="ERP 품번 입력"></label><p>도면번호가 변경된 동일 품목은 ERP 품번을 직접 조회한 뒤, 아래에서 검토 근거를 남겨 수동 연결합니다.</p><div class="form-actions"><button class="button">수동 품번 조회</button></div></form>
+{% if candidates %}{% for candidate in candidates %}
+<section class="card">
+  <h2>{{ candidate.transaction.part_number }} <span class="eyebrow">{{ '도면번호 일치' if candidate.match_method == 'drawing_number' else ('수동 연결 후보' if candidate.match_method == 'manual' else '규격 보조 후보') }}</span></h2>
+  <dl><div><dt>품명</dt><dd>{{ candidate.transaction.part_name or '-' }}</dd></div><div><dt>규격</dt><dd>{{ candidate.transaction.specification or '-' }}</dd></div><div><dt>제조사</dt><dd>{{ candidate.transaction.maker or '-' }}</dd></div><div><dt>거래처</dt><dd>{{ candidate.transaction.supplier or '-' }}</dd></div><div><dt>ERP 기준 일시</dt><dd>{{ candidate.transaction.erp_updated_at or '-' }}</dd></div></dl>
+  <form class="form-grid" method="post" action="/bom/items/{{ item.id }}/erp-candidates/{{ candidate.transaction.id }}/confirm">
+    <input type="hidden" name="match_method" value="{{ candidate.match_method }}">
+    <label>검토 품목 유형 *<select name="review_type" required><option value="">선택</option><option value="machined" {% if item.item_type == 'machined' %}selected{% endif %}>가공품</option><option value="purchased" {% if item.item_type == 'purchased' %}selected{% endif %}>구매품</option></select></label>
+    <fieldset><legend>가공품 확인 (가공품 확정 시 모두 필수)</legend><label><input type="checkbox" name="shape_dimension_checked" value="확인"> 형상·치수·도면 확인</label><label><input type="checkbox" name="material_checked" value="확인"> 재질 확인</label><label><input type="checkbox" name="treatment_checked" value="확인"> 후처리 확인</label><label><input type="checkbox" name="quantity_checked" value="확인"> 수량 확인</label></fieldset>
+    <fieldset><legend>구매품 확인 (구매품 확정 시 모두 필수)</legend><label><input type="checkbox" name="specification_checked" value="확인"> 규격 확인</label><label><input type="checkbox" name="maker_checked" value="확인"> 제조사 확인</label></fieldset>
+    <label>확정 근거 *<input name="confirmation_note" required placeholder="예: 도면 Rev.A 및 제조사 규격서 대조 완료"></label>
+    <label>확정자 *<input name="confirmed_by" required></label>
+    <div class="form-actions"><button class="button primary">이 후보 확정</button></div>
+  </form>
+</section>
+{% endfor %}{% else %}<section class="card"><p>최근 1년 내 도면번호 또는 규격 일치 ERP 후보가 없습니다.</p></section>{% endif %}
+{% endblock %}
