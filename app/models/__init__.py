@@ -11,6 +11,7 @@ from app.models.packages import ExchangePackage
 from app.models.project import Project, ProjectStatus
 from app.models.quotes import QuoteAdjustment, QuoteItem, QuoteVersion
 from app.models.settings import Setting
+from app.models.schedules import ScheduleChangeRequest
 
 __all__ = [
     "AuthUser",
@@ -33,5 +34,6 @@ __all__ = [
     "QuoteItem",
     "QuoteVersion",
     "Setting",
+    "ScheduleChangeRequest",
     "UploadBatch",
 ]

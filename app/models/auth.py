@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -14,11 +14,14 @@ class AuthUser(Base):
     """BOM 서비스에 로그인할 수 있는 사용자 계정."""
 
     __tablename__ = "auth_users"
+    __table_args__ = (CheckConstraint("permission_level IN (1, 2)", name="ck_user_level"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(254), nullable=False, unique=True)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    permission_level: Mapped[int] = mapped_column(Integer, nullable=False, default=1,
+                                                server_default="1")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     auth_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
