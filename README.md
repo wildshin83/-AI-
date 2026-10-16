@@ -1,11 +1,13 @@
 # BOM 관리 서비스
 
-CS사업부 기술팀용 로컬 설치형 BOM·ERP·견적 검토 서비스입니다.
+CS사업부 기술팀용 BOM·ERP·견적 검토 서비스입니다. 앱은 팀원 PC에서 실행하며, 목표 업무 DB는 Supabase PostgreSQL입니다. 현재 런타임 코드는 아직 SQLite를 사용하므로 Supabase 연동 완료 상태가 아닙니다.
 
 ## 설계 기준
 
-- 각 사용자 PC에서 독립 실행합니다.
-- 데이터는 로컬 SQLite DB와 앱 데이터 폴더에 저장합니다.
+- 앱은 각 사용자 PC에서 실행합니다.
+- 목표 구조에서 프로젝트·BOM·ERP·가격·견적 데이터는 Supabase PostgreSQL에 저장합니다.
+- Supabase는 DB만 사용합니다. 인증과 파일 저장은 제공하지 않으며, 도면·원본·첨부 파일은 PC별 앱 데이터 폴더에 보관합니다.
+- 현재 구현은 SQLite를 사용합니다. Supabase 접속정보·마이그레이션·운영 백업은 P10 작업 대상입니다.
 - Excel 원본, 도면, 가격 확정, 견적 제출본은 변경 이력과 함께 보존합니다.
 - ERP 후보값은 자동 적용하지 않습니다.
 - 고객 출력물과 내부 원가 정보는 분리합니다.
@@ -18,9 +20,9 @@ CS사업부 기술팀용 로컬 설치형 BOM·ERP·견적 검토 서비스입�
 
 ## 로컬 데이터 경로
 
-기본 데이터 경로는 Windows의 `%LOCALAPPDATA%\\BomManagementService`입니다.
+기본 로컬 파일 경로는 Windows의 `%LOCALAPPDATA%\\BomManagementService`입니다. DB 전환 후에도 이 경로는 첨부 파일, 출력물, 로그 등의 로컬 저장에 사용합니다.
 
-- `data/`: SQLite DB
+- `data/`: 현재 구현의 SQLite DB. Supabase 전환 후에는 로컬 업무 DB로 사용하지 않을 예정
 - `files/`: 업로드 원본 및 첨부 파일
 - `exports/`: 생성한 Excel 출력물
 - `backups/`: 백업 파일
@@ -56,4 +58,4 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8765
 
 - 실제 업무 파일럿 절차는 `TEST_SCENARIOS.md`를 따른다.
 - 프로젝트 패키지는 새 프로젝트로만 가져올 수 있으며, 동일 프로젝트 번호는 자동 병합·덮어쓰기를 하지 않는다.
-- 백업 복원은 기존 로컬 DB·첨부 파일을 바꾸므로, ZIP 선택과 `RESTORE` 확인 문구를 요구하고 복원 직전 상태를 자동 백업한다. 상세 절차는 `BACKUP_RESTORE_GUIDE.md`를 따른다.
+- 현재 앱의 SQLite·첨부 파일 백업 절차는 `BACKUP_RESTORE_GUIDE.md`에 따른다. 이는 Supabase DB 백업 절차가 아니며, Supabase 전환 전에 DB와 PC별 첨부 파일의 백업·복구 운영을 별도로 확정한다.
