@@ -2,7 +2,7 @@
 
 ## 1. 목적과 적용 범위
 
-팀원 PC에서 실행하는 FastAPI 앱을 Supabase PostgreSQL에 연결하는 설정 절차다. Supabase는 업무 데이터베이스만 사용한다. Supabase Auth와 Storage는 사용하지 않으며 도면·원본·첨부 파일은 PC별 로컬 저장소에 남긴다.
+팀원 PC에서 실행하는 FastAPI 앱을 Supabase PostgreSQL에 연결하는 설정 절차다. Supabase Auth와 Storage는 사용하지 않는다. 로컬 앱은 도면·원본·첨부 파일을 PC별 로컬 저장소에 남기며, Vercel 공개 테스트 배포는 업로드 원본만 PostgreSQL 바이너리 열에 저장한다.
 
 현재 앱은 `BOM_DATABASE_URL`이 설정되면 PostgreSQL을 사용하고, 설정이 없으면 기존 개발용 SQLite를 사용한다. 원격 DB를 적용한 뒤 `/health?details=true`에서 `database`가 `postgresql`인지 확인한다.
 
@@ -61,7 +61,8 @@ Supabase는 지속 실행되는 앱에는 직접 연결을 권장하고, IPv4 �
 
 - PostgreSQL 연결 상태에서 앱의 로컬 SQLite 백업·복원 메뉴는 비활성화되며, API도 SQLite ZIP을 원격 DB에 복원하지 못하게 차단한다.
 - Supabase PostgreSQL 백업·복구는 Supabase 프로젝트의 별도 운영 절차를 사용한다. 담당자, 보존 주기, 복구 목표, 실제 복구 리허설은 실데이터 파일럿 전에 확정한다.
-- 첨부 파일은 각 PC에 남기므로, Supabase DB 백업만으로 첨부 파일이 복구되지는 않는다. PC 교체·파일 공유 시나리오와 로컬 첨부 백업을 별도로 관리한다.
+- 로컬 앱 첨부 파일은 각 PC에 남기므로 Supabase DB 백업만으로 복구되지 않는다. PC 교체·파일 공유 시나리오와 로컬 첨부 백업을 별도로 관리한다.
+- Vercel 테스트 배포는 업로드 원본을 DB에 저장하므로 DB 백업에 포함된다. 이 방식은 테스트 파일에 한정하고, 파일당 최대 크기 4MB를 지킨다.
 
 ## 6. 변경 이력
 
