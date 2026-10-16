@@ -80,7 +80,7 @@ def submit_account_request(
         )
         session.add(account_request)
         session.commit()
-        admin_email = session.scalar(
+        admin_email = os.getenv("BOM_ADMIN_NOTIFICATION_EMAIL", "").strip() or session.scalar(
             select(AuthUser.email)
             .where(AuthUser.is_admin.is_(True), AuthUser.is_active.is_(True))
             .order_by(AuthUser.id)

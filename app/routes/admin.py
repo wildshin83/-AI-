@@ -153,7 +153,11 @@ def user_list(
             "message": None,
             "errors": [],
             "single_error": None,
-            "smtp_configured": bool(os.getenv("BOM_SMTP_HOST") and os.getenv("BOM_SMTP_FROM")),
+            "smtp_configured": bool(
+                os.getenv("BOM_SMTP_HOST")
+                and os.getenv("BOM_SMTP_FROM")
+                and (os.getenv("BOM_ADMIN_NOTIFICATION_EMAIL") or users)
+            ),
         },
     )
 
@@ -232,7 +236,11 @@ def _render_user_management(
             "message": message,
             "errors": [],
             "single_error": single_error,
-            "smtp_configured": bool(os.getenv("BOM_SMTP_HOST") and os.getenv("BOM_SMTP_FROM")),
+            "smtp_configured": bool(
+                os.getenv("BOM_SMTP_HOST")
+                and os.getenv("BOM_SMTP_FROM")
+                and (os.getenv("BOM_ADMIN_NOTIFICATION_EMAIL") or users)
+            ),
         },
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY if single_error else status.HTTP_200_OK,
     )

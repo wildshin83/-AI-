@@ -15,7 +15,7 @@ GitHub `main` 브랜치에서 Vercel로 배포하는 인증형 BOM·ERP·견적 
 - 비밀번호는 PBKDF2-SHA256으로 해시해 저장한다. 새 사용자는 첫 로그인에 임시 비밀번호를 변경한다.
 - 계정 Excel 첫 번째 시트에 `email`, `name`, `temporary_password` 열이 필요하다. 이메일·이름·임시 비밀번호의 한글 열 이름도 지원한다. 최대 500명, 파일 2 MB까지 허용한다. 원본 계정 Excel은 서버에 저장하지 않는다.
 - 로그인 화면의 **계정 만들기**는 이름·이메일·신청 사유만 접수한다. 신청만으로 계정이나 로그인 권한은 생기지 않으며, 관리자가 승인하고 임시 비밀번호를 지정해야 계정이 생성된다. 관리자는 신청을 반려할 수도 있다.
-- 계정 신청 알림은 관리자 계정 이메일로 SMTP 발송한다. Vercel Production에 `BOM_SMTP_HOST`, `BOM_SMTP_FROM`, `BOM_SMTP_PORT`(기본 587), `BOM_SMTP_STARTTLS`(기본 true), 필요 시 `BOM_SMTP_USERNAME`, `BOM_SMTP_PASSWORD`를 등록한다. SMTP 미설정 또는 발송 실패에도 신청은 DB에 남으며, 관리자는 사용자 관리 화면의 대기 목록에서 확인할 수 있다.
+- 계정 신청 알림은 `BOM_ADMIN_NOTIFICATION_EMAIL`에 지정한 주소로 SMTP 발송한다. 미설정 시 활성 관리자 계정 주소를 사용한다. 현재 수신 주소를 지정하려면 `BOM_ADMIN_NOTIFICATION_EMAIL=shs1202@shinjinmtec.co.kr`로 설정한다. Vercel Production에 `BOM_SMTP_HOST`, `BOM_SMTP_FROM`, `BOM_SMTP_PORT`(기본 587), `BOM_SMTP_STARTTLS`(기본 true), 필요 시 `BOM_SMTP_USERNAME`, `BOM_SMTP_PASSWORD`도 등록한다. SMTP 미설정 또는 발송 실패에도 신청은 DB에 남으며, 관리자는 사용자 관리 화면의 대기 목록에서 확인할 수 있다.
 - POST 요청은 같은 출처인지 확인한다.
 
 ## 파일 저장 및 제한
