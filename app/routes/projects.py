@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.db import get_session
 from app.models.alerts import Alert
 from app.models.project import Project, ProjectStatus
+from app.services.cs_contacts import CS_MANAGER_NAMES
 from app.services.project_codes import (
     CUSTOMER_CODES,
     CUSTOMER_OPTIONS,
@@ -54,6 +55,7 @@ def _project_form_context(project=None, error=None):
         "department_codes": DEPARTMENT_CODES,
         "main_project_codes": MAIN_PROJECT_CODES,
         "order_codes": ORDER_CODES,
+        "cs_manager_names": CS_MANAGER_NAMES,
         "error": error,
     }
 
@@ -202,6 +204,8 @@ def project_create(
         "order_serial": order_serial,
     }
     try:
+        if manager_name not in CS_MANAGER_NAMES:
+            raise ValueError("담당자는 CS사업부 인원 중에서 선택하세요.")
         project_number = suggest_project_number(session, selection)
         project = create_project(
             session,

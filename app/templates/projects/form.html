@@ -18,7 +18,7 @@
   <label>주문 순번 *<input name="order_serial" id="order-serial" required data-code-field inputmode="numeric" autocomplete="off" maxlength="3" pattern="[0-9]{3}" placeholder="자동 제안 또는 직접 입력" value="{{ project.order_serial if project else '' }}"><small>기준서 순번: 000~999</small></label>
   <label>프로젝트명 *<input name="project_name" required value="{{ project.project_name if project else '' }}"></label>
   <label>장비명/호기 상세 *<input name="equipment_unit" required value="{{ project.equipment_unit if project else '' }}"></label>
-  <label>담당자 *<input name="manager_name" required value="{{ project.manager_name if project else '' }}"></label>
+  <label>담당자 *<select name="manager_name" required><option value="">담당자 선택</option>{% for name in cs_manager_names %}<option value="{{ name }}" {% if project and project.manager_name == name %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
   <label>진행 상태 *<select name="project_status">{% for item in statuses %}<option value="{{ item.value }}" {% if project and project.status == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}</select></label>
   <label>목표 납기일<input type="date" name="target_delivery_date" value="{{ project.target_delivery_date if project and project.target_delivery_date else '' }}"></label>
   <div class="form-actions form-span"><button class="button primary" type="submit">등록</button></div>
