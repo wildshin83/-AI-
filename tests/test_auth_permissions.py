@@ -1,5 +1,9 @@
 """캐시·계정 변경과 관계없는 최신 인증 상태 검증."""
 
+from datetime import datetime
+
+import pytest
+
 from tests.conftest import TEST_PASSWORD
 
 
@@ -23,8 +27,10 @@ def test_old_version_rejected_after_reactivation(account_db, accounts, sign_in):
     assert client.get("/projects", follow_redirects=False).status_code == 303
 
 
-def test_inactive_login_correct_password_shows_expired(account_db, accounts, web_client):
+@pytest.mark.parametrize("locked", [False, True])
+def test_inactive_login_correct_password_shows_expired(account_db, accounts, web_client, locked):
     accounts[0].is_active = False
+    accounts[0].locked_until = datetime(2099, 1, 1) if locked else None
     account_db.commit()
     response = web_client.post(
         "/login", data={"email": accounts[0].email, "password": TEST_PASSWORD}

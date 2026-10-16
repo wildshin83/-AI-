@@ -123,7 +123,7 @@ def login(
         .with_for_update()
         .execution_options(populate_existing=True)
     )
-    valid = user is not None and not login_locked(user)
+    valid = user is not None and (not user.is_active or not login_locked(user))
     if not valid or not verify_password(password, user.password_hash if user else ""):
         if user and user.is_active and not login_locked(user):
             record_failed_login(user)
