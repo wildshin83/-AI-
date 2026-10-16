@@ -10,8 +10,8 @@ from app.models.imports import MappingProfile, UploadBatch
 from app.models.packages import ExchangePackage
 from app.models.project import Project, ProjectStatus
 from app.models.quotes import QuoteAdjustment, QuoteItem, QuoteVersion
-from app.models.settings import Setting
 from app.models.schedules import ScheduleChangeRequest
+from app.models.settings import Setting
 
 __all__ = [
     "AuthUser",

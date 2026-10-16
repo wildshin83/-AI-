@@ -19,8 +19,14 @@ from app.services.user_management import (
 
 
 def identity(user):
-    return SessionUser(user.id, user.display_name, user.is_admin,
-                       user.must_change_password, user.permission_level, user.auth_version)
+    return SessionUser(
+        user.id,
+        user.display_name,
+        user.is_admin,
+        user.must_change_password,
+        user.permission_level,
+        user.auth_version,
+    )
 
 
 def test_level_changes_only_target_and_noop_keeps_session(account_db, accounts):
@@ -72,20 +78,49 @@ def test_account_approval_assigns_level_once(account_db, accounts):
     pending = AccountRequest(email="new@example.test", display_name="new", message="test")
     account_db.add(pending)
     account_db.commit()
-    user = approve_account(account_db, actor=identity(accounts[2]), request_id=pending.id,
-                           temporary_password="Test-new-password-123", permission_level=2)
+    user = approve_account(
+        account_db,
+        actor=identity(accounts[2]),
+        request_id=pending.id,
+        temporary_password="Test-new-password-123",
+        permission_level=2,
+    )
     assert user.permission_level == 2 and pending.status == "approved"
     with pytest.raises(ValueError):
-        approve_account(account_db, actor=identity(accounts[2]), request_id=pending.id,
-                        temporary_password="Test-new-password-123", permission_level=2)
+        approve_account(
+            account_db,
+            actor=identity(accounts[2]),
+            request_id=pending.id,
+            temporary_password="Test-new-password-123",
+            permission_level=2,
+        )
+
+
+def test_rejection_is_audited_and_blocks_later_approval(account_db, accounts):
+    from app.services.user_management import reject_account
+
+    pending = AccountRequest(email="rejected@example.test", display_name="new", message="test")
+    account_db.add(pending)
+    account_db.commit()
+    reject_account(account_db, actor=identity(accounts[2]), request_id=pending.id)
+    assert pending.status == "rejected"
+    assert account_db.scalar(select(AuditLog).where(AuditLog.action == "user.account_rejected"))
+    with pytest.raises(ValueError):
+        approve_account(
+            account_db,
+            actor=identity(accounts[2]),
+            request_id=pending.id,
+            temporary_password="Example-password-123",
+            permission_level=1,
+        )
 
 
 def test_admin_forms_and_reset_response(account_db, accounts, sign_in):
     member, _, admin = accounts
     client = sign_in(admin)
     response = client.get("/admin/users?search=member")
-    assert f'/admin/users/{member.id}/permission' in response.text
-    assert f'/admin/users/{member.id}/status' in response.text
+    assert f"/admin/users/{member.id}/permission" in response.text
+    assert f"/admin/users/{member.id}/status" in response.text
     response = client.post(f"/admin/users/{member.id}/reset-password")
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
@@ -97,8 +132,9 @@ def test_permission_downgrade_invalidates_old_identity(account_db, accounts):
     from app.security import require_current_user
 
     old_identity = identity(accounts[1])
-    set_user_level(account_db, actor=identity(accounts[2]), user_id=accounts[1].id,
-                   permission_level=1)
+    set_user_level(
+        account_db, actor=identity(accounts[2]), user_id=accounts[1].id, permission_level=1
+    )
     with pytest.raises(HTTPException) as error:
         require_current_user(account_db, old_identity, schedule_editor=True)
     assert error.value.status_code == 401

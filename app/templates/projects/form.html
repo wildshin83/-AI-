@@ -20,7 +20,9 @@
   <label>장비명/호기 상세 *<input name="equipment_unit" required value="{{ project.equipment_unit if project else '' }}"></label>
   <label>담당자 *<select name="manager_name" required><option value="">담당자 선택</option>{% for name in cs_manager_names %}<option value="{{ name }}" {% if project and project.manager_name == name %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
   <label>진행 상태 *<select name="project_status">{% for item in statuses %}<option value="{{ item.value }}" {% if project and project.status == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}</select></label>
-  <label>목표 납기일<input type="date" name="target_delivery_date" value="{{ project.target_delivery_date if project and project.target_delivery_date else '' }}"></label>
+  <label>고객 납기일<input type="date" name="target_delivery_date" value="{{ project.target_delivery_date if project and project.target_delivery_date else '' }}"></label>
+    <label>입고 일정<input type="date" name="incoming_date" value="{{ project.incoming_date if project and project.incoming_date else '' }}"></label>
+    <label>FOB 일정<input type="date" name="fob_date" value="{{ project.fob_date if project and project.fob_date else '' }}"></label>
   <div class="form-actions form-span"><button class="button primary" type="submit">등록</button></div>
 </form>
 <script>

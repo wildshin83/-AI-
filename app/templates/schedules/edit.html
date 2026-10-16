@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}프로젝트 일정 | BOM 관리 서비스{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">{{ project.project_number }}</p><h1>프로젝트 일정</h1><p>{{ project.project_name }}</p></div><a class="button" href="/projects/{{ project.id }}">프로젝트로 돌아가기</a></section>
+{% if error %}<p class="error-message" role="alert">{{ error }}</p>{% endif %}
+{% if message %}<p class="success-message" role="status">{{ message }}</p>{% endif %}
+<section class="card"><h2>{{ "일정 수정" if can_edit else "일정 변경 요청" }}</h2>
+<p>{{ "변경 사유와 함께 저장하면 일정에 바로 반영됩니다." if can_edit else "2단계 사용자 또는 관리자의 승인 후 일정에 반영됩니다." }}</p>
+<form class="form-grid schedule-edit" method="post" action="/projects/{{ project.id }}/schedule">
+<input type="hidden" name="base_version" value="{{ values.base_version }}">
+{% for field, label in labels.items() %}<label>{{ label }}<span class="current-date">현재: {{ project|attr(field) or "미입력" }}</span><input type="date" name="{{ field }}" value="{{ values[field] or '' }}" {% if focus == field %}autofocus{% endif %}></label>{% endfor %}
+<label class="form-span">변경 사유 *<textarea name="reason" required maxlength="2000" rows="3">{{ values.reason }}</textarea></label>
+<div class="form-actions"><button class="button primary" type="submit">{{ "일정 저장" if can_edit else "승인 요청" }}</button></div>
+</form></section>
+{% if pending %}<section class="card"><h2>승인 대기</h2><p>{{ pending.requested_by_name }} · {{ pending.created_at|kst }}</p><p>{{ pending.reason }}</p>
+<div class="table-wrap schedule-table"><table><thead><tr><th>일정</th><th>기존</th><th>제안</th></tr></thead><tbody>{% for field, label in labels.items() %}<tr><th>{{ label }}</th><td>{{ pending|attr('old_' ~ field) or "미입력" }}</td><td>{{ pending|attr('proposed_' ~ field) or "미입력" }}</td></tr>{% endfor %}</tbody></table></div>
+{% if can_edit or pending.requested_by_id == request.state.current_user.id %}<p><a href="/schedule-requests/{{ pending.id }}">요청 상세 확인{% if can_edit %} 및 승인·반려{% endif %}</a></p>{% endif %}
+{% if can_edit %}<p>직접 수정하면 이 대기 요청은 재요청이 필요한 상태로 바뀝니다.</p>{% endif %}</section>{% endif %}
+<section class="card"><h2>최근 일정 변경 이력</h2>
+{% for entry in history %}<article class="schedule-history"><p><strong>{{ entry.actor_name }}</strong> · {{ entry.created_at|kst }} · {{ {"schedule.requested":"변경 요청", "schedule.updated":"직접 수정", "schedule.approved":"승인", "schedule.rejected":"반려", "schedule.conflicted":"재요청 필요"}.get(entry.action, entry.action) }}</p><p>{{ entry.details.get('reason', '') }} {{ entry.details.get('comment', '') or '' }}</p>
+{% if entry.details.get('before') %}<dl class="schedule-history-dates">{% for field, label in labels.items() %}<div><dt>{{ label }}</dt><dd>{{ entry.details.before.get(field) or "미입력" }} → {{ entry.details.after.get(field) or "미입력" }}</dd></div>{% endfor %}</dl>{% endif %}</article>{% else %}<p>등록된 일정 변경 이력이 없습니다.</p>{% endfor %}</section>
+{% endblock %}

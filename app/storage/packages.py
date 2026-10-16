@@ -35,7 +35,8 @@ def create_local_backup() -> Path:
 
     if not is_sqlite_database():
         raise RuntimeError(
-            "이 기능은 로컬 SQLite 백업 전용입니다. Supabase PostgreSQL은 별도 백업 절차를 사용하세요."
+            "이 기능은 로컬 SQLite 백업 전용입니다. "
+            "Supabase PostgreSQL은 별도 백업 절차를 사용하세요."
         )
     paths.ensure_directories()
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -71,9 +72,7 @@ def _unsafe_archive_member(member_name: str) -> bool:
     return (
         member_name.startswith(("/", "\\"))
         or ".." in member_path.parts
-        or not (
-            member_name == "data/bom_service.sqlite3" or member_name.startswith("files/")
-        )
+        or not (member_name == "data/bom_service.sqlite3" or member_name.startswith("files/"))
     )
 
 
@@ -82,7 +81,8 @@ def restore_local_backup(path: Path) -> Path:
 
     if not is_sqlite_database():
         raise RuntimeError(
-            "SQLite 백업을 Supabase PostgreSQL에 복원할 수 없습니다. Supabase 복구 절차를 사용하세요."
+            "SQLite 백업을 Supabase PostgreSQL에 복원할 수 없습니다. "
+            "Supabase 복구 절차를 사용하세요."
         )
     inspect_local_backup(path)
     paths.ensure_directories()

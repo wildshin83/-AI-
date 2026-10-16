@@ -20,8 +20,9 @@ class AuthUser(Base):
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    permission_level: Mapped[int] = mapped_column(Integer, nullable=False, default=1,
-                                                server_default="1")
+    permission_level: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     auth_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

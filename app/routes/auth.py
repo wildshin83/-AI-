@@ -24,7 +24,6 @@ from app.services.auth import (
     validate_password,
     verify_password,
 )
-from app.services.notifications import send_account_request_notification
 
 router = APIRouter(tags=["authentication"])
 templates = Jinja2Templates(directory="app/templates")
@@ -80,18 +79,6 @@ def submit_account_request(
         )
         session.add(account_request)
         session.commit()
-        admin_email = os.getenv("BOM_ADMIN_NOTIFICATION_EMAIL", "").strip() or session.scalar(
-            select(AuthUser.email)
-            .where(AuthUser.is_admin.is_(True), AuthUser.is_active.is_(True))
-            .order_by(AuthUser.id)
-            .limit(1)
-        )
-        send_account_request_notification(
-            admin_email=admin_email,
-            applicant_email=normalized_email,
-            applicant_name=clean_name,
-            request_id=account_request.id,
-        )
     return templates.TemplateResponse(
         request,
         "auth/account_request.html",
@@ -113,8 +100,12 @@ def login_form(request: Request, next: str = "/projects", notice: str = ""):
         )
         return RedirectResponse(target, status_code=303)
     return templates.TemplateResponse(
-        request, "auth/login.html", {"error": "권한이 만료되어 접속할 수 없습니다."
-                                   if notice == "expired" else None, "next": _safe_next(next)}
+        request,
+        "auth/login.html",
+        {
+            "error": "권한이 만료되어 접속할 수 없습니다." if notice == "expired" else None,
+            "next": _safe_next(next),
+        },
     )
 
 
@@ -126,7 +117,12 @@ def login(
     next: str = Form("/projects"),
     session: Session = Depends(get_session),
 ):
-    user = session.scalar(select(AuthUser).where(AuthUser.email == email.strip().casefold()))
+    user = session.scalar(
+        select(AuthUser)
+        .where(AuthUser.email == email.strip().casefold())
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
     valid = user is not None and not login_locked(user)
     if not valid or not verify_password(password, user.password_hash if user else ""):
         if user and user.is_active and not login_locked(user):
@@ -141,18 +137,20 @@ def login(
 
     if not user.is_active:
         return templates.TemplateResponse(
-            request, "auth/login.html",
+            request,
+            "auth/login.html",
             {"error": "권한이 만료되어 접속할 수 없습니다.", "next": _safe_next(next)},
             status_code=403,
         )
     user.failed_login_count = 0
     user.locked_until = None
-    session.commit()
+    # 검증한 세션 버전을 commit 뒤에 재조회해 다른 비밀번호의 버전으로 바꾸지 않는다.
     response = RedirectResponse(
         "/account/password" if user.must_change_password else _safe_next(next),
         status_code=303,
     )
     set_session_cookie(response, user)
+    session.commit()
     return response
 
 
@@ -243,7 +241,20 @@ def change_password(
     session: Session = Depends(get_session),
 ):
     current_user: AuthUser = request.state.current_user
-    user = session.get(AuthUser, current_user.id)
+    user = session.scalar(
+        select(AuthUser)
+        .where(
+            AuthUser.id == current_user.id,
+            AuthUser.is_active.is_(True),
+            AuthUser.auth_version == current_user.auth_version,
+        )
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if user is None:
+        response = RedirectResponse("/login?notice=expired", status_code=303)
+        clear_session_cookie(response)
+        return response
     if not user.must_change_password and not verify_password(current_password, user.password_hash):
         return templates.TemplateResponse(
             request,

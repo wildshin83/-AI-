@@ -1,5 +1,6 @@
 """프로젝트 등록·보관과 감사 이력의 회귀 테스트."""
 
+from dataclasses import replace
 from datetime import date
 
 import pytest
@@ -47,6 +48,14 @@ def test_create_project_records_audit_log(session: Session) -> None:
     assert audit_log is not None
     assert audit_log.action == "project.created"
     assert audit_log.entity_id == str(project.id)
+
+
+def test_project_creates_three_schedule_dates(session: Session):
+    data = replace(project_input(), incoming_date=date(2026, 10, 20), fob_date=date(2026, 10, 25))
+    project = create_project(session, data)
+    assert project.incoming_date == date(2026, 10, 20)
+    assert project.fob_date == date(2026, 10, 25)
+    assert project.schedule_version == 1
 
 
 def test_duplicate_project_number_is_rejected(session: Session) -> None:

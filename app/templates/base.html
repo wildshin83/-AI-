@@ -11,7 +11,8 @@
     <a href="/projects" class="brand">BOM 관리 서비스</a>
     {% if request.state.current_user %}
     <nav class="account-nav" aria-label="계정 메뉴">
-      <span class="environment">{{ request.state.current_user.display_name }} · {{ "관리자" if request.state.current_user.is_admin else "사용자" }}</span>
+      <span class="environment">{{ request.state.current_user.display_name }} · {{ "관리자" if request.state.current_user.is_admin else (request.state.current_user.permission_level|string) ~ "단계" }}</span>
+      <a href="/schedule-requests">일정 요청함</a>
       {% if request.state.current_user.is_admin %}<a href="/admin/users">사용자 관리</a>{% endif %}
       <a href="/account/password">비밀번호 변경</a>
       <form method="post" action="/logout"><button class="header-button" type="submit">로그아웃</button></form>

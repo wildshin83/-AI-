@@ -42,8 +42,9 @@ class Project(Base):
     target_delivery_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     incoming_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     fob_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    schedule_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1,
-                                                server_default="1")
+    schedule_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False),

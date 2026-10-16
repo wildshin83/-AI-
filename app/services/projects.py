@@ -26,6 +26,8 @@ class ProjectCreateInput:
     manager_name: str
     status: str
     target_delivery_date: date | None
+    incoming_date: date | None = None
+    fob_date: date | None = None
 
 
 def _clean_required(value: str, field_name: str) -> str:
@@ -50,6 +52,8 @@ def create_project(session: Session, data: ProjectCreateInput) -> Project:
             else ProjectStatus.QUOTATION.value
         ),
         target_delivery_date=data.target_delivery_date,
+        incoming_date=data.incoming_date,
+        fob_date=data.fob_date,
     )
     session.add(project)
     try:

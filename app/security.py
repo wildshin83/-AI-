@@ -43,19 +43,33 @@ class SessionUser:
 def _verified_user(identity: tuple[int, int]) -> SessionUser | None:
     """모든 보호된 요청에서 활성 상태와 세션 버전을 새로 확인한다."""
     with SessionLocal() as session:
-        row = session.execute(select(
-            AuthUser.id, AuthUser.display_name, AuthUser.is_admin,
-            AuthUser.must_change_password, AuthUser.permission_level, AuthUser.auth_version,
-        ).where(AuthUser.id == identity[0], AuthUser.auth_version == identity[1],
-                AuthUser.is_active.is_(True))).one_or_none()
+        row = session.execute(
+            select(
+                AuthUser.id,
+                AuthUser.display_name,
+                AuthUser.is_admin,
+                AuthUser.must_change_password,
+                AuthUser.permission_level,
+                AuthUser.auth_version,
+            ).where(
+                AuthUser.id == identity[0],
+                AuthUser.auth_version == identity[1],
+                AuthUser.is_active.is_(True),
+            )
+        ).one_or_none()
     return SessionUser(*row) if row else None
 
 
-def require_current_user(session: Session, identity: SessionUser, *, admin: bool = False,
-                         schedule_editor: bool = False) -> AuthUser:
+def require_current_user(
+    session: Session, identity: SessionUser, *, admin: bool = False, schedule_editor: bool = False
+) -> AuthUser:
     """민감 쓰기에서 최신 권한을 확인하고 트랜잭션 동안 계정 변경과 직렬화한다."""
-    user = session.scalar(select(AuthUser).where(AuthUser.id == identity.id)
-                          .with_for_update(read=True).execution_options(populate_existing=True))
+    user = session.scalar(
+        select(AuthUser)
+        .where(AuthUser.id == identity.id)
+        .with_for_update(read=True)
+        .execution_options(populate_existing=True)
+    )
     if not user or not user.is_active or user.auth_version != identity.auth_version:
         raise HTTPException(401, "권한이 만료되어 접속할 수 없습니다.")
     if user.must_change_password:
@@ -151,7 +165,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             )
 
         public_path = path in {
-            "/login", "/setup-admin", "/account-requests", "/account-requests/new", "/health"
+            "/login",
+            "/setup-admin",
+            "/account-requests",
+            "/account-requests/new",
+            "/health",
         } or path.startswith("/static/")
         user = None
         has_session_cookie = bool(request.cookies.get(COOKIE_NAME))
@@ -166,8 +184,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 try:
                     user = _verified_user(identity)
                 except SQLAlchemyError:
-                    return JSONResponse(status_code=503,
-                                        content={"detail": "인증 상태를 확인할 수 없습니다."})
+                    return JSONResponse(
+                        status_code=503, content={"detail": "인증 상태를 확인할 수 없습니다."}
+                    )
 
         request.state.current_user = user
         if not public_path:
@@ -200,4 +219,6 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         if path.startswith("/static/") and response.status_code < 400:
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif path != "/health":
+            response.headers["Cache-Control"] = "no-store"
         return response

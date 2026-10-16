@@ -188,6 +188,8 @@ def project_create(
     manager_name: str = Form(),
     project_status: str = Form(ProjectStatus.QUOTATION.value),
     target_delivery_date: date | None = Form(None),
+    incoming_date: date | None = Form(None),
+    fob_date: date | None = Form(None),
     session: Session = Depends(get_session),
 ):
     selection = {
@@ -217,6 +219,8 @@ def project_create(
                 manager_name=manager_name,
                 status=project_status,
                 target_delivery_date=target_delivery_date,
+                incoming_date=incoming_date,
+                fob_date=fob_date,
             ),
         )
     except (ValueError, ProjectNumberAlreadyExistsError) as error:
@@ -229,6 +233,8 @@ def project_create(
             "manager_name": manager_name,
             "status": project_status,
             "target_delivery_date": target_delivery_date,
+            "incoming_date": incoming_date,
+            "fob_date": fob_date,
         }
         return templates.TemplateResponse(
             request,

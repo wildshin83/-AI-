@@ -17,9 +17,62 @@ def test_package_manifest_can_be_read_without_overwriting(tmp_path: Path) -> Non
     assert manifest["format_version"] == 1
 
 
+def test_schedule_dates_package_v2_roundtrip_and_legacy(account_db, tmp_path, monkeypatch):
+    from datetime import date
+
+    import pytest
+
+    from app.models.project import Project
+    from app.services.packages import export_project_package, import_project_package
+
+    root = tmp_path / "package-files"
+    local_paths = AppPaths(
+        root=root,
+        database=root / "data/db.sqlite3",
+        files=root / "files",
+        exports=root / "exports",
+        backups=root / "backups",
+        logs=root / "logs",
+    )
+    local_paths.ensure_directories()
+    monkeypatch.setattr(packages, "paths", local_paths)
+    project = Project(
+        project_number="PACKAGE-1",
+        project_name="Package",
+        customer_name="Test",
+        equipment_unit="Test",
+        manager_name="Test",
+        schedule_version=8,
+        target_delivery_date=date(2026, 12, 1),
+        incoming_date=date(2026, 11, 1),
+        fob_date=date(2026, 11, 15),
+    )
+    account_db.add(project)
+    account_db.commit()
+    result = export_project_package(account_db, project=project, created_by="Test")
+    path = Path(result.stored_path)
+    with pytest.raises(ValueError, match="동일 프로젝트 번호"):
+        import_project_package(account_db, package_path=path, imported_by="Test")
+    for legacy in (False, True):
+        manifest = read_package_manifest(path)
+        manifest["project"]["number"] = f"PACKAGE-{'OLD' if legacy else 'NEW'}"
+        if legacy:
+            manifest["project"].pop("incoming_date", None)
+            manifest["project"].pop("fob_date", None)
+        new_path = tmp_path / f"{legacy}.zip"
+        with ZipFile(new_path, "w") as archive:
+            archive.writestr("manifest.json", json.dumps(manifest))
+        restored = import_project_package(account_db, package_path=new_path, imported_by="Test")
+        assert restored.target_delivery_date == date(2026, 12, 1)
+        assert restored.incoming_date == (None if legacy else date(2026, 11, 1))
+        assert restored.fob_date == (None if legacy else date(2026, 11, 15))
+        assert restored.schedule_version == 1
+
+
 def test_backup_restore_preserves_current_state_as_a_separate_backup(
     tmp_path: Path, monkeypatch
 ) -> None:
+    monkeypatch.setattr(packages, "is_sqlite_database", lambda: True)
     root = tmp_path / "app-data"
     local_paths = AppPaths(
         root=root,

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
@@ -14,9 +13,16 @@ from sqlalchemy.orm import Session
 
 from app.db import get_session
 from app.models.auth import AccountRequest, AuthUser
-from app.services.auth import create_user, normalize_email
 from app.security import require_current_user
-from app.services.user_management import (approve_account, set_user_level, set_user_active, reset_user_password)
+from app.services.auth import create_user, normalize_email
+from app.services.notifications import send_temporary_password
+from app.services.user_management import (
+    approve_account,
+    reject_account,
+    reset_user_password,
+    set_user_active,
+    set_user_level,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory="app/templates")
@@ -139,13 +145,24 @@ def user_list(request: Request, search: str = "", session: Session = Depends(get
 
 
 @router.post("/account-requests/{request_id}/approve")
-def approve_account_request(request: Request, request_id: int, temporary_password: str = Form(),
-                            permission_level: int = Form(1), session: Session = Depends(get_session)):
+def approve_account_request(
+    request: Request,
+    request_id: int,
+    temporary_password: str = Form(),
+    permission_level: int = Form(1),
+    session: Session = Depends(get_session),
+):
     try:
-        user = approve_account(session, actor=request.state.current_user, request_id=request_id,
-                               temporary_password=temporary_password, permission_level=permission_level)
-        return _render_user_management(request, session,
-            message=f"{user.email} 계정을 {permission_level}단계로 승인했습니다.")
+        user = approve_account(
+            session,
+            actor=request.state.current_user,
+            request_id=request_id,
+            temporary_password=temporary_password,
+            permission_level=permission_level,
+        )
+        return _render_user_management(
+            request, session, message=f"{user.email} 계정을 {permission_level}단계로 승인했습니다."
+        )
     except (ValueError, IntegrityError) as error:
         session.rollback()
         detail = str(error) if isinstance(error, ValueError) else "이미 등록된 이메일입니다."
@@ -158,55 +175,89 @@ def reject_account_request(
     request_id: int,
     session: Session = Depends(get_session),
 ):
-    require_current_user(session, request.state.current_user, admin=True)
-    account_request = session.get(AccountRequest, request_id)
-    if not account_request or account_request.status != "pending":
-        message, single_error = None, "대기 중인 신청을 찾을 수 없습니다."
-    else:
-        account_request.status = "rejected"
-        account_request.reviewed_at = datetime.utcnow()
-        session.commit()
-        message, single_error = "계정 신청을 반려했습니다.", None
-    return _render_user_management(request, session, message, single_error)
+    try:
+        reject_account(session, actor=request.state.current_user, request_id=request_id)
+        return _render_user_management(request, session, message="계정 신청을 반려했습니다.")
+    except ValueError as error:
+        return _render_user_management(request, session, single_error=str(error))
 
 
-def _render_user_management(request: Request, session: Session, message=None,
-                            single_error=None, *, search="", errors=None,
-                            temporary_password=None, reset_user=None):
+def _render_user_management(
+    request: Request,
+    session: Session,
+    message=None,
+    single_error=None,
+    *,
+    search="",
+    errors=None,
+    temporary_password=None,
+    reset_user=None,
+    email_sent=None,
+):
     query = select(AuthUser)
     if search.strip():
         term = f"%{search.strip()}%"
         query = query.where(AuthUser.display_name.ilike(term) | AuthUser.email.ilike(term))
     users = list(session.scalars(query.order_by(AuthUser.created_at.desc(), AuthUser.id.desc())))
-    pending = list(session.scalars(select(AccountRequest).where(AccountRequest.status == "pending")
-                                   .order_by(AccountRequest.created_at, AccountRequest.id)))
-    return templates.TemplateResponse(request, "admin/users.html", {
-        "users": users, "requests": pending, "message": message, "single_error": single_error,
-        "errors": errors or [], "search": search, "temporary_password": temporary_password,
-        "reset_user": reset_user,
-    }, status_code=422 if single_error or errors else 200, headers={"Cache-Control": "no-store"})
+    pending = list(
+        session.scalars(
+            select(AccountRequest)
+            .where(AccountRequest.status == "pending")
+            .order_by(AccountRequest.created_at, AccountRequest.id)
+        )
+    )
+    return templates.TemplateResponse(
+        request,
+        "admin/users.html",
+        {
+            "users": users,
+            "requests": pending,
+            "message": message,
+            "single_error": single_error,
+            "errors": errors or [],
+            "search": search,
+            "temporary_password": temporary_password,
+            "reset_user": reset_user,
+            "email_sent": email_sent,
+        },
+        status_code=422 if single_error or errors else 200,
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.post("/users/{user_id}/permission")
-def save_permission(request: Request, user_id: int, permission_level: int = Form(),
-                    session: Session = Depends(get_session)):
+def save_permission(
+    request: Request,
+    user_id: int,
+    permission_level: int = Form(),
+    session: Session = Depends(get_session),
+):
     try:
-        user = set_user_level(session, actor=request.state.current_user, user_id=user_id,
-                              permission_level=permission_level)
-        return _render_user_management(request, session,
-                                       message=f"{user.display_name} 권한을 저장했습니다.")
+        user = set_user_level(
+            session,
+            actor=request.state.current_user,
+            user_id=user_id,
+            permission_level=permission_level,
+        )
+        return _render_user_management(
+            request, session, message=f"{user.display_name} 권한을 저장했습니다."
+        )
     except ValueError as error:
         return _render_user_management(request, session, single_error=str(error))
 
 
 @router.post("/users/{user_id}/status")
-def save_status(request: Request, user_id: int, active: bool = Form(),
-                session: Session = Depends(get_session)):
+def save_status(
+    request: Request, user_id: int, active: bool = Form(), session: Session = Depends(get_session)
+):
     try:
-        user = set_user_active(session, actor=request.state.current_user, user_id=user_id, active=active)
+        user = set_user_active(
+            session, actor=request.state.current_user, user_id=user_id, active=active
+        )
         state = "활성" if user.is_active else "비활성"
-        return _render_user_management(request, session,
-                                       message=f"{user.display_name} 계정을 {state}으로 저장했습니다.")
+        return _render_user_management(
+            request, session, message=f"{user.display_name} 계정을 {state}으로 저장했습니다."
+        )
     except ValueError as error:
         return _render_user_management(request, session, single_error=str(error))
 
@@ -215,8 +266,11 @@ def save_status(request: Request, user_id: int, active: bool = Form(),
 def reset_password(request: Request, user_id: int, session: Session = Depends(get_session)):
     try:
         password = reset_user_password(session, actor=request.state.current_user, user_id=user_id)
-        return _render_user_management(request, session, temporary_password=password,
-                                       reset_user=session.get(AuthUser, user_id))
+        user = session.get(AuthUser, user_id)
+        sent = send_temporary_password(email=user.email, name=user.display_name, password=password)
+        return _render_user_management(
+            request, session, temporary_password=password, reset_user=user, email_sent=sent
+        )
     except ValueError as error:
         return _render_user_management(request, session, single_error=str(error))
 
@@ -277,18 +331,10 @@ async def import_users(
                         f"{len(accounts)}개 계정을 등록했습니다. "
                         "모든 사용자는 첫 로그인 때 비밀번호를 변경해야 합니다."
                     )
-                    users = list(
-                        session.scalars(
-                            select(AuthUser).order_by(
-                                AuthUser.created_at.desc(), AuthUser.id.desc()
-                            )
-                        )
-                    )
                 except (ValueError, IntegrityError):
                     session.rollback()
                     message = None
                     errors = ["계정을 저장하지 못했습니다. 중복 여부를 확인하고 다시 업로드하세요."]
-                    users = list(session.scalars(select(AuthUser).order_by(AuthUser.id.desc())))
             else:
                 message = None
     await account_file.close()

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}일정 요청 검토 | BOM 관리 서비스{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">{{ project.project_number }}</p><h1>일정 요청 검토</h1><p>{{ project.project_name }}</p></div><a class="button" href="/schedule-requests">일정 요청함</a></section>
+{% if error %}<p class="error-message" role="alert">{{ error }}</p>{% endif %}
+<section class="card"><h2>{{ status_labels[entry.status] }}</h2><p>{{ entry.requested_by_name }} · {{ entry.created_at|kst }}</p><p>신청 사유: {{ entry.reason }}</p>
+<div class="table-wrap schedule-table"><table><thead><tr><th>일정</th><th>기존</th><th>제안</th><th>현재</th></tr></thead><tbody>{% for field, label in labels.items() %}<tr><th>{{ label }}</th><td>{{ entry|attr('old_' ~ field) or "미입력" }}</td><td>{{ entry|attr('proposed_' ~ field) or "미입력" }}</td><td>{{ project|attr(field) or "미입력" }}</td></tr>{% endfor %}</tbody></table></div>
+{% if entry.reviewed_at %}<p>검토: {{ entry.reviewed_by_name }} · {{ entry.reviewed_at|kst }}</p><p>{{ entry.review_comment or "의견 없음" }}</p>{% endif %}
+{% if can_edit and entry.status == 'pending' %}
+<form class="form-grid single-column" method="post" action="/schedule-requests/{{ entry.id }}/approve"><label>승인 의견 (선택)<textarea name="comment" maxlength="2000" rows="2"></textarea></label><div><button class="button primary" type="submit">승인하여 일정 반영</button></div></form>
+<form class="form-grid single-column" method="post" action="/schedule-requests/{{ entry.id }}/reject"><label>반려 사유 *<textarea name="comment" required maxlength="2000" rows="2"></textarea></label><div><button class="button danger" type="submit">반려</button></div></form>
+{% endif %}<p><a href="/projects/{{ project.id }}/schedule">프로젝트 일정 확인</a></p></section>
+{% endblock %}

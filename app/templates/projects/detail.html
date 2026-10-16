@@ -7,7 +7,10 @@
     {% for stage in statuses %}
     <li class="status-stage {% if loop.index0 < active_status_index %}completed{% elif loop.index0 == active_status_index %}active{% else %}pending{% endif %}" {% if loop.index0 == active_status_index %}aria-current="step"{% endif %}><span class="status-marker">{% if loop.index0 < active_status_index %}✓{% else %}{{ loop.index }}{% endif %}</span><span class="status-label">{{ stage.value }}</span></li>
     {% endfor %}
-  </ol></div><div class="summary-delivery"><p class="summary-label">목표 납기일</p><p class="summary-value">{{ project.target_delivery_date or "미입력" }}</p></div><div class="summary-archive"><p class="summary-label">보관 상태</p><p class="summary-value">{{ "아카이브" if project.is_archived else "진행" }}</p></div></div>
+  </ol></div><div class="summary-delivery schedule-summary">
+{% for field, label, focus in [('target_delivery_date', '고객 납기일', 'customer'), ('incoming_date', '입고 일정', 'incoming'), ('fob_date', 'FOB 일정', 'fob')] %}
+<div><p class="summary-label">{{ label }}</p><a class="summary-value schedule-date" href="/projects/{{ project.id }}/schedule?focus={{ focus }}" aria-label="{{ label }} 확인 및 변경">{{ project|attr(field) or "미입력" }}</a></div>
+{% endfor %}</div><div class="summary-archive"><p class="summary-label">보관 상태</p><p class="summary-value">{{ "아카이브" if project.is_archived else "진행" }}</p></div></div>
 </section>
 <section class="card next-step"><h2>자료 등록</h2><p>Inventor BOM 또는 ERP BOM Excel을 끌어 놓거나 파일을 선택하면 열 매핑 검토로 이동합니다.</p>
   <form class="project-source-upload" method="post" action="/projects/{{ project.id }}/uploads/preview" enctype="multipart/form-data">

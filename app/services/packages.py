@@ -66,6 +66,8 @@ def _project_payload(project: Project) -> dict[str, object]:
         "equipment_unit": project.equipment_unit,
         "manager_name": project.manager_name,
         "status": project.status,
+        "incoming_date": project.incoming_date.isoformat() if project.incoming_date else None,
+        "fob_date": project.fob_date.isoformat() if project.fob_date else None,
         "target_delivery_date": project.target_delivery_date.isoformat()
         if project.target_delivery_date
         else None,
@@ -155,6 +157,8 @@ def import_project_package(session: Session, *, package_path: Path, imported_by:
         manager_name=str(incoming.get("manager_name") or imported_by).strip(),
         status=str(incoming.get("status") or "견적"),
         target_delivery_date=_optional_date(incoming.get("target_delivery_date")),
+        incoming_date=_optional_date(incoming.get("incoming_date")),
+        fob_date=_optional_date(incoming.get("fob_date")),
     )
     session.add(project)
     session.flush()

@@ -23,6 +23,7 @@ from app.routes.erp import router as erp_router
 from app.routes.operations import router as operations_router
 from app.routes.projects import router as projects_router
 from app.routes.quotes import router as quotes_router
+from app.routes.schedules import router as schedules_router
 from app.routes.uploads import router as uploads_router
 from app.security import AuthenticationMiddleware
 
@@ -56,6 +57,7 @@ app.include_router(drawings_router)
 app.include_router(erp_router)
 app.include_router(alerts_router)
 app.include_router(quotes_router)
+app.include_router(schedules_router)
 
 
 @app.get("/health", tags=["system"])
