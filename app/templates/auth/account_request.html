@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}계정 만들기 | BOM 관리 서비스{% endblock %}
+{% block content %}
+<section class="auth-card card">
+  <p class="eyebrow">BOM 관리 서비스</p>
+  <h1>계정 승인 요청</h1>
+  <p>신청 내용을 관리자에게 전달합니다. 승인 후 관리자가 계정을 등록합니다.</p>
+  {% if message %}<p class="success-message" role="status">{{ message }}</p>{% endif %}
+  {% if error %}<p class="error-message" role="alert">{{ error }}</p>{% endif %}
+  {% if not message %}
+  <form class="form-grid single-column" method="post" action="/account-requests">
+    <label>이름<input name="display_name" required maxlength="120" autocomplete="name"></label>
+    <label>이메일<input type="email" name="email" required maxlength="254" autocomplete="email"></label>
+    <label>신청 사유 (선택)<textarea name="message" rows="4" maxlength="2000"></textarea></label>
+    <div class="form-actions"><button class="button primary" type="submit">승인 요청</button><a class="button" href="/login" style="margin-left: 10px">로그인으로</a></div>
+  </form>
+  {% else %}<p><a href="/login">로그인 화면으로 돌아가기</a></p>{% endif %}
+</section>
+{% endblock %}

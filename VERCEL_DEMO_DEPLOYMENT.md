@@ -14,7 +14,9 @@ GitHub `main` 브랜치에서 Vercel로 배포하는 인증형 BOM·ERP·견적 
 - 세션은 `BOM_SESSION_SECRET`으로 서명하며 브라우저에 HttpOnly·SameSite 쿠키로 저장한다. Vercel에서는 Secure 쿠키를 사용한다.
 - 비밀번호는 PBKDF2-SHA256으로 해시해 저장한다. 새 사용자는 첫 로그인에 임시 비밀번호를 변경한다.
 - 계정 Excel 첫 번째 시트에 `email`, `name`, `temporary_password` 열이 필요하다. 이메일·이름·임시 비밀번호의 한글 열 이름도 지원한다. 최대 500명, 파일 2 MB까지 허용한다. 원본 계정 Excel은 서버에 저장하지 않는다.
-- POST 요청은 같은 출처인지 확인한다. 공개 계정 가입은 제공하지 않는다.
+- 로그인 화면의 **계정 만들기**는 이름·이메일·신청 사유만 접수한다. 신청만으로 계정이나 로그인 권한은 생기지 않으며, 관리자가 승인하고 임시 비밀번호를 지정해야 계정이 생성된다. 관리자는 신청을 반려할 수도 있다.
+- 계정 신청 알림은 관리자 계정 이메일로 SMTP 발송한다. Vercel Production에 `BOM_SMTP_HOST`, `BOM_SMTP_FROM`, `BOM_SMTP_PORT`(기본 587), `BOM_SMTP_STARTTLS`(기본 true), 필요 시 `BOM_SMTP_USERNAME`, `BOM_SMTP_PASSWORD`를 등록한다. SMTP 미설정 또는 발송 실패에도 신청은 DB에 남으며, 관리자는 사용자 관리 화면의 대기 목록에서 확인할 수 있다.
+- POST 요청은 같은 출처인지 확인한다.
 
 ## 파일 저장 및 제한
 
@@ -45,3 +47,4 @@ GitHub `main` 브랜치에서 Vercel로 배포하는 인증형 BOM·ERP·견적 
 |---|---|---|
 | 2026-10-16 | 인증형 배포, 로그인·관리자 계정 발급, Excel 일괄 등록, 세션·업로드 보안 규칙 추가 | Supabase/Vercel 배포 전 환경 변수와 계정 범위 확인 |
 | 2026-10-16 | FastAPI 공개 라우팅 수정 | Production 배포 `df7a6a8`에서 로그인 화면, PostgreSQL 헬스 응답, 최초 관리자 폼 확인 |
+| 2026-10-16 | 공개 계정 승인 요청 및 SMTP 알림 절차 추가 | DB 마이그레이션 `20261016_0011` 적용과 Vercel SMTP 변수 입력 후 실제 메일 수신 확인 필요 |

@@ -17,3 +17,4 @@
 | 2026-10-16 | Vercel 공개 테스트 앱에서 업로드 파일을 요청 간 유지해야 함 | 서버리스 파일시스템은 영구 저장소가 아니고 업로드 요청 크기도 제한됨 | 파일 원본을 PostgreSQL에 저장하고 파일당 4MB 제한을 적용하도록 구현. 가상 데이터 전용 테스트 DB를 별도 구성한 뒤 배포 환경에서 업로드·재요청 다운로드 검증 필요 | 추적 |
 | 2026-10-16 | Vercel 인증 배포 환경 연결 | 사용자가 기존 DB 연결과 배포 범위를 승인함. 런타임 역할은 스키마 내 전체 CRUD 권한을 가짐 | 런타임 URL·세션 키·초기 관리자 키를 Production Secret으로 저장하고 마이그레이션 소유자 URL은 배포하지 않음 | 배포 완료 |
 | 2026-10-16 | 최초 인증 배포에서 `/`·`/health` 접속 시 리다이렉트 반복 | `vercel.json`의 catch-all rewrite와 FastAPI의 경로 인증 미들웨어가 충돌 | `pyproject.toml`에서 `app.main:app`을 FastAPI 진입점으로 지정하고 catch-all rewrite 제거. 배포 `df7a6a8`에서 로그인 화면, `database: postgresql` 헬스 응답, 관리자 초기 설정 화면 확인 | 해결 |
+| 2026-10-16 | 계정 신청 메일이 오지 않을 수 있음 | SMTP 서버 환경변수가 배포 지침에 아직 등록되지 않음 | `BOM_SMTP_HOST`, `BOM_SMTP_FROM` 및 공급자 인증 정보를 Vercel Production에 설정. 설정 전 신청은 Supabase의 `account_requests`에 보관되고 관리자 화면에서 확인 가능 | 메일 설정 필요 |

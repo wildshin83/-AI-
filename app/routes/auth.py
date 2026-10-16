@@ -13,16 +13,18 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import get_session
-from app.models.auth import AuthUser
+from app.models.auth import AccountRequest, AuthUser
 from app.security import clear_session_cookie, set_session_cookie
 from app.services.auth import (
     create_user,
     hash_password,
     login_locked,
+    normalize_email,
     record_failed_login,
     validate_password,
     verify_password,
 )
+from app.services.notifications import send_account_request_notification
 
 router = APIRouter(tags=["authentication"])
 templates = Jinja2Templates(directory="app/templates")
@@ -30,6 +32,77 @@ templates = Jinja2Templates(directory="app/templates")
 
 def _safe_next(value: str) -> str:
     return value if value.startswith("/") and not value.startswith("//") else "/projects"
+
+
+@router.get("/account-requests/new")
+def account_request_form(request: Request):
+    return templates.TemplateResponse(
+        request, "auth/account_request.html", {"error": None, "message": None}
+    )
+
+
+@router.post("/account-requests")
+def submit_account_request(
+    request: Request,
+    email: str = Form(),
+    display_name: str = Form(),
+    message: str = Form(""),
+    session: Session = Depends(get_session),
+):
+    try:
+        normalized_email = normalize_email(email)
+        clean_name = display_name.strip()
+        clean_message = message.strip()
+        if not clean_name or len(clean_name) > 120:
+            raise ValueError("이름을 입력해 주세요. (최대 120자)")
+        if len(clean_message) > 2000:
+            raise ValueError("신청 사유는 2,000자 이내로 입력해 주세요.")
+    except ValueError as error:
+        return templates.TemplateResponse(
+            request,
+            "auth/account_request.html",
+            {"error": str(error), "message": None},
+            status_code=422,
+        )
+
+    existing_user = session.scalar(select(AuthUser.id).where(AuthUser.email == normalized_email))
+    pending_request = session.scalar(
+        select(AccountRequest).where(
+            AccountRequest.email == normalized_email, AccountRequest.status == "pending"
+        )
+    )
+    if not existing_user and not pending_request:
+        account_request = AccountRequest(
+            email=normalized_email,
+            display_name=clean_name,
+            message=clean_message,
+            status="pending",
+        )
+        session.add(account_request)
+        session.commit()
+        admin_email = session.scalar(
+            select(AuthUser.email)
+            .where(AuthUser.is_admin.is_(True), AuthUser.is_active.is_(True))
+            .order_by(AuthUser.id)
+            .limit(1)
+        )
+        send_account_request_notification(
+            admin_email=admin_email,
+            applicant_email=normalized_email,
+            applicant_name=clean_name,
+            request_id=account_request.id,
+        )
+    return templates.TemplateResponse(
+        request,
+        "auth/account_request.html",
+        {
+            "error": None,
+            "message": (
+                "신청을 접수했습니다. 관리자 승인 후 계정이 등록됩니다. "
+                "진행 상황은 관리자에게 문의해 주세요."
+            ),
+        },
+    )
 
 
 @router.get("/login")

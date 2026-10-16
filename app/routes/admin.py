@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+from datetime import datetime
 from io import BytesIO
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
@@ -13,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import get_session
-from app.models.auth import AuthUser
+from app.models.auth import AccountRequest, AuthUser
 from app.services.auth import create_user, normalize_email
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -135,10 +137,104 @@ def user_list(
     users = list(
         session.scalars(select(AuthUser).order_by(AuthUser.created_at.desc(), AuthUser.id.desc()))
     )
+    requests = list(
+        session.scalars(
+            select(AccountRequest)
+            .where(AccountRequest.status == "pending")
+            .order_by(AccountRequest.created_at, AccountRequest.id)
+        )
+    )
     return templates.TemplateResponse(
         request,
         "admin/users.html",
-        {"users": users, "message": None, "errors": [], "single_error": None},
+        {
+            "users": users,
+            "requests": requests,
+            "message": None,
+            "errors": [],
+            "single_error": None,
+            "smtp_configured": bool(os.getenv("BOM_SMTP_HOST") and os.getenv("BOM_SMTP_FROM")),
+        },
+    )
+
+
+@router.post("/account-requests/{request_id}/approve")
+def approve_account_request(
+    request: Request,
+    request_id: int,
+    temporary_password: str = Form(),
+    session: Session = Depends(get_session),
+):
+    account_request = session.get(AccountRequest, request_id)
+    if not account_request or account_request.status != "pending":
+        message, single_error = None, "대기 중인 신청을 찾을 수 없습니다."
+    else:
+        try:
+            user = create_user(
+                session,
+                email=account_request.email,
+                display_name=account_request.display_name,
+                temporary_password=temporary_password,
+            )
+            account_request.status = "approved"
+            account_request.reviewed_at = datetime.utcnow()
+            session.commit()
+            message = (
+                f"{user.email} 계정을 승인하고 등록했습니다. "
+                "첫 로그인 때 비밀번호 변경이 필요합니다."
+            )
+            single_error = None
+        except ValueError as error:
+            session.rollback()
+            message, single_error = None, str(error)
+        except IntegrityError:
+            session.rollback()
+            message, single_error = None, "이미 등록된 이메일입니다. 기존 계정을 확인하세요."
+    return _render_user_management(request, session, message, single_error)
+
+
+@router.post("/account-requests/{request_id}/reject")
+def reject_account_request(
+    request: Request,
+    request_id: int,
+    session: Session = Depends(get_session),
+):
+    account_request = session.get(AccountRequest, request_id)
+    if not account_request or account_request.status != "pending":
+        message, single_error = None, "대기 중인 신청을 찾을 수 없습니다."
+    else:
+        account_request.status = "rejected"
+        account_request.reviewed_at = datetime.utcnow()
+        session.commit()
+        message, single_error = "계정 신청을 반려했습니다.", None
+    return _render_user_management(request, session, message, single_error)
+
+
+def _render_user_management(
+    request: Request, session: Session, message: str | None, single_error: str | None
+):
+    users = list(
+        session.scalars(select(AuthUser).order_by(AuthUser.created_at.desc(), AuthUser.id.desc()))
+    )
+    requests = list(
+        session.scalars(
+            select(AccountRequest)
+            .where(AccountRequest.status == "pending")
+            .order_by(AccountRequest.created_at, AccountRequest.id)
+        )
+    )
+    return templates.TemplateResponse(
+        request,
+        "admin/users.html",
+        {
+            "users": users,
+            "requests": requests,
+            "message": message,
+            "errors": [],
+            "single_error": single_error,
+            "smtp_configured": bool(os.getenv("BOM_SMTP_HOST") and os.getenv("BOM_SMTP_FROM")),
+        },
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY if single_error else status.HTTP_200_OK,
     )
 
 

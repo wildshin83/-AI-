@@ -108,7 +108,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 status_code=403, content={"detail": "요청 출처를 확인할 수 없습니다."}
             )
 
-        public_path = path in {"/login", "/setup-admin", "/health"} or path.startswith("/static/")
+        public_path = path in {
+            "/login", "/setup-admin", "/account-requests", "/account-requests/new", "/health"
+        } or path.startswith("/static/")
         user = None
         if path != "/health" and not path.startswith("/static/"):
             identity = _session_identity(request.cookies.get(COOKIE_NAME, ""))

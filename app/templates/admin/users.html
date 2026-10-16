@@ -8,6 +8,28 @@
 {% if message %}<p class="success-message" role="status">{{ message }}</p>{% endif %}
 {% if errors %}<section class="error-message" role="alert"><strong>Excel을 등록하지 않았습니다.</strong><ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul></section>{% endif %}
 {% if single_error %}<p class="error-message" role="alert">{{ single_error }}</p>{% endif %}
+{% if smtp_configured is defined %}
+  {% if smtp_configured %}<p class="success-message" role="status">계정 신청 알림 메일의 SMTP 기본 설정이 있습니다. 실제 메일 발송은 SMTP 서버 인증 설정에 따라 달라질 수 있습니다.</p>
+  {% else %}<p class="error-message" role="status">메일 서버가 아직 설정되지 않았습니다. 신청은 아래에 저장되지만 관리자에게 이메일은 발송되지 않습니다. 배포 환경에 SMTP 설정을 추가해야 합니다.</p>{% endif %}
+{% endif %}
+<section class="card">
+  <h2>계정 승인 요청</h2>
+  {% if requests %}
+  {% for account_request in requests %}
+  <article class="card" style="margin-top: 14px">
+    <p><strong>{{ account_request.display_name }}</strong> · {{ account_request.email }} · {{ account_request.created_at.strftime("%Y-%m-%d %H:%M") if account_request.created_at else "" }}</p>
+    <p>{{ account_request.message or "신청 사유 없음" }}</p>
+    <form class="upload-form" method="post" action="/admin/account-requests/{{ account_request.id }}/approve">
+      <label>임시 비밀번호 (12자 이상)<input type="password" name="temporary_password" required minlength="12" maxlength="256" autocomplete="new-password"></label>
+      <button class="button primary" type="submit">승인 및 계정 등록</button>
+    </form>
+    <form method="post" action="/admin/account-requests/{{ account_request.id }}/reject">
+      <button class="button danger" type="submit">반려</button>
+    </form>
+  </article>
+  {% endfor %}
+  {% else %}<p>대기 중인 신청이 없습니다.</p>{% endif %}
+</section>
 <section class="card">
   <h2>계정 직접 등록</h2>
   <form class="form-grid" method="post" action="/admin/users">
