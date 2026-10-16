@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from datetime import datetime
 from io import BytesIO
 
@@ -16,6 +15,8 @@ from sqlalchemy.orm import Session
 from app.db import get_session
 from app.models.auth import AccountRequest, AuthUser
 from app.services.auth import create_user, normalize_email
+from app.security import require_current_user
+from app.services.user_management import (approve_account, set_user_level, set_user_active, reset_user_password)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory="app/templates")
@@ -133,71 +134,22 @@ def _parse_workbook(contents: bytes, session: Session) -> tuple[list[dict[str, s
 
 
 @router.get("/users")
-def user_list(
-    request: Request,
-    session: Session = Depends(get_session),
-):
-    users = list(
-        session.scalars(select(AuthUser).order_by(AuthUser.created_at.desc(), AuthUser.id.desc()))
-    )
-    requests = list(
-        session.scalars(
-            select(AccountRequest)
-            .where(AccountRequest.status == "pending")
-            .order_by(AccountRequest.created_at, AccountRequest.id)
-        )
-    )
-    return templates.TemplateResponse(
-        request,
-        "admin/users.html",
-        {
-            "users": users,
-            "requests": requests,
-            "message": None,
-            "errors": [],
-            "single_error": None,
-            "smtp_configured": bool(
-                os.getenv("BOM_SMTP_HOST")
-                and os.getenv("BOM_SMTP_FROM")
-                and (os.getenv("BOM_ADMIN_NOTIFICATION_EMAIL") or users)
-            ),
-        },
-    )
+def user_list(request: Request, search: str = "", session: Session = Depends(get_session)):
+    return _render_user_management(request, session, search=search)
 
 
 @router.post("/account-requests/{request_id}/approve")
-def approve_account_request(
-    request: Request,
-    request_id: int,
-    temporary_password: str = Form(),
-    session: Session = Depends(get_session),
-):
-    account_request = session.get(AccountRequest, request_id)
-    if not account_request or account_request.status != "pending":
-        message, single_error = None, "대기 중인 신청을 찾을 수 없습니다."
-    else:
-        try:
-            user = create_user(
-                session,
-                email=account_request.email,
-                display_name=account_request.display_name,
-                temporary_password=temporary_password,
-            )
-            account_request.status = "approved"
-            account_request.reviewed_at = datetime.utcnow()
-            session.commit()
-            message = (
-                f"{user.email} 계정을 승인하고 등록했습니다. "
-                "첫 로그인 때 비밀번호 변경이 필요합니다."
-            )
-            single_error = None
-        except ValueError as error:
-            session.rollback()
-            message, single_error = None, str(error)
-        except IntegrityError:
-            session.rollback()
-            message, single_error = None, "이미 등록된 이메일입니다. 기존 계정을 확인하세요."
-    return _render_user_management(request, session, message, single_error)
+def approve_account_request(request: Request, request_id: int, temporary_password: str = Form(),
+                            permission_level: int = Form(1), session: Session = Depends(get_session)):
+    try:
+        user = approve_account(session, actor=request.state.current_user, request_id=request_id,
+                               temporary_password=temporary_password, permission_level=permission_level)
+        return _render_user_management(request, session,
+            message=f"{user.email} 계정을 {permission_level}단계로 승인했습니다.")
+    except (ValueError, IntegrityError) as error:
+        session.rollback()
+        detail = str(error) if isinstance(error, ValueError) else "이미 등록된 이메일입니다."
+        return _render_user_management(request, session, single_error=detail)
 
 
 @router.post("/account-requests/{request_id}/reject")
@@ -206,6 +158,7 @@ def reject_account_request(
     request_id: int,
     session: Session = Depends(get_session),
 ):
+    require_current_user(session, request.state.current_user, admin=True)
     account_request = session.get(AccountRequest, request_id)
     if not account_request or account_request.status != "pending":
         message, single_error = None, "대기 중인 신청을 찾을 수 없습니다."
@@ -217,36 +170,55 @@ def reject_account_request(
     return _render_user_management(request, session, message, single_error)
 
 
-def _render_user_management(
-    request: Request, session: Session, message: str | None, single_error: str | None
-):
-    users = list(
-        session.scalars(select(AuthUser).order_by(AuthUser.created_at.desc(), AuthUser.id.desc()))
-    )
-    requests = list(
-        session.scalars(
-            select(AccountRequest)
-            .where(AccountRequest.status == "pending")
-            .order_by(AccountRequest.created_at, AccountRequest.id)
-        )
-    )
-    return templates.TemplateResponse(
-        request,
-        "admin/users.html",
-        {
-            "users": users,
-            "requests": requests,
-            "message": message,
-            "errors": [],
-            "single_error": single_error,
-            "smtp_configured": bool(
-                os.getenv("BOM_SMTP_HOST")
-                and os.getenv("BOM_SMTP_FROM")
-                and (os.getenv("BOM_ADMIN_NOTIFICATION_EMAIL") or users)
-            ),
-        },
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY if single_error else status.HTTP_200_OK,
-    )
+def _render_user_management(request: Request, session: Session, message=None,
+                            single_error=None, *, search="", errors=None,
+                            temporary_password=None, reset_user=None):
+    query = select(AuthUser)
+    if search.strip():
+        term = f"%{search.strip()}%"
+        query = query.where(AuthUser.display_name.ilike(term) | AuthUser.email.ilike(term))
+    users = list(session.scalars(query.order_by(AuthUser.created_at.desc(), AuthUser.id.desc())))
+    pending = list(session.scalars(select(AccountRequest).where(AccountRequest.status == "pending")
+                                   .order_by(AccountRequest.created_at, AccountRequest.id)))
+    return templates.TemplateResponse(request, "admin/users.html", {
+        "users": users, "requests": pending, "message": message, "single_error": single_error,
+        "errors": errors or [], "search": search, "temporary_password": temporary_password,
+        "reset_user": reset_user,
+    }, status_code=422 if single_error or errors else 200, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/users/{user_id}/permission")
+def save_permission(request: Request, user_id: int, permission_level: int = Form(),
+                    session: Session = Depends(get_session)):
+    try:
+        user = set_user_level(session, actor=request.state.current_user, user_id=user_id,
+                              permission_level=permission_level)
+        return _render_user_management(request, session,
+                                       message=f"{user.display_name} 권한을 저장했습니다.")
+    except ValueError as error:
+        return _render_user_management(request, session, single_error=str(error))
+
+
+@router.post("/users/{user_id}/status")
+def save_status(request: Request, user_id: int, active: bool = Form(),
+                session: Session = Depends(get_session)):
+    try:
+        user = set_user_active(session, actor=request.state.current_user, user_id=user_id, active=active)
+        state = "활성" if user.is_active else "비활성"
+        return _render_user_management(request, session,
+                                       message=f"{user.display_name} 계정을 {state}으로 저장했습니다.")
+    except ValueError as error:
+        return _render_user_management(request, session, single_error=str(error))
+
+
+@router.post("/users/{user_id}/reset-password")
+def reset_password(request: Request, user_id: int, session: Session = Depends(get_session)):
+    try:
+        password = reset_user_password(session, actor=request.state.current_user, user_id=user_id)
+        return _render_user_management(request, session, temporary_password=password,
+                                       reset_user=session.get(AuthUser, user_id))
+    except ValueError as error:
+        return _render_user_management(request, session, single_error=str(error))
 
 
 @router.post("/users")
@@ -255,14 +227,17 @@ def add_user(
     email: str = Form(),
     display_name: str = Form(),
     temporary_password: str = Form(),
+    permission_level: int = Form(1),
     session: Session = Depends(get_session),
 ):
+    require_current_user(session, request.state.current_user, admin=True)
     try:
         user = create_user(
             session,
             email=email,
             display_name=display_name,
             temporary_password=temporary_password,
+            permission_level=permission_level,
         )
         session.commit()
         message = f"{user.email} 계정을 등록했습니다. 첫 로그인 때 비밀번호를 변경해야 합니다."
@@ -275,15 +250,7 @@ def add_user(
         session.rollback()
         message = None
         single_error = "이미 등록된 이메일입니다."
-    users = list(
-        session.scalars(select(AuthUser).order_by(AuthUser.created_at.desc(), AuthUser.id.desc()))
-    )
-    return templates.TemplateResponse(
-        request,
-        "admin/users.html",
-        {"users": users, "message": message, "errors": [], "single_error": single_error},
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY if single_error else status.HTTP_200_OK,
-    )
+    return _render_user_management(request, session, message, single_error)
 
 
 @router.post("/users/import")
@@ -292,9 +259,7 @@ async def import_users(
     account_file: UploadFile = File(),
     session: Session = Depends(get_session),
 ):
-    users = list(
-        session.scalars(select(AuthUser).order_by(AuthUser.created_at.desc(), AuthUser.id.desc()))
-    )
+    require_current_user(session, request.state.current_user, admin=True)
     if not account_file.filename or not account_file.filename.casefold().endswith(".xlsx"):
         message, errors = None, [".xlsx 형식의 계정 파일을 선택하세요."]
     else:
@@ -327,9 +292,4 @@ async def import_users(
             else:
                 message = None
     await account_file.close()
-    return templates.TemplateResponse(
-        request,
-        "admin/users.html",
-        {"users": users, "message": message, "errors": errors, "single_error": None},
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY if errors else status.HTTP_200_OK,
-    )
+    return _render_user_management(request, session, message=message, errors=errors)

@@ -8,9 +8,11 @@
 {% if message %}<p class="success-message" role="status">{{ message }}</p>{% endif %}
 {% if errors %}<section class="error-message" role="alert"><strong>Excel을 등록하지 않았습니다.</strong><ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul></section>{% endif %}
 {% if single_error %}<p class="error-message" role="alert">{{ single_error }}</p>{% endif %}
-{% if smtp_configured is defined %}
-  {% if smtp_configured %}<p class="success-message" role="status">계정 신청 알림 메일의 SMTP 기본 설정이 있습니다. 실제 메일 발송은 SMTP 서버 인증 설정에 따라 달라질 수 있습니다.</p>
-  {% else %}<p class="error-message" role="status">메일 서버가 아직 설정되지 않았습니다. 신청은 아래에 저장되지만 관리자에게 이메일은 발송되지 않습니다. 배포 환경에 SMTP 설정을 추가해야 합니다.</p>{% endif %}
+{% if temporary_password %}
+<section class="card" role="status"><h2>발급한 임시 비밀번호</h2>
+<p>{{ reset_user.display_name }} · {{ reset_user.email }}</p>
+<p><code class="temporary-password">{{ temporary_password }}</code></p>
+<p>이 화면에서 한 번만 확인할 수 있습니다. 사용자에게 직접 전달하세요. 다음 로그인 때 비밀번호를 변경해야 합니다.</p></section>
 {% endif %}
 <section class="card">
   <h2>계정 승인 요청</h2>
@@ -21,6 +23,7 @@
     <p>{{ account_request.message or "신청 사유 없음" }}</p>
     <form class="upload-form" method="post" action="/admin/account-requests/{{ account_request.id }}/approve">
       <label>임시 비밀번호 (12자 이상)<input type="password" name="temporary_password" required minlength="12" maxlength="256" autocomplete="new-password"></label>
+      <label>권한<select name="permission_level"><option value="1">1단계 사용자</option><option value="2">2단계 사용자</option></select></label>
       <button class="button primary" type="submit">승인 및 계정 등록</button>
     </form>
     <form method="post" action="/admin/account-requests/{{ account_request.id }}/reject">
@@ -36,6 +39,7 @@
     <label>이름<input name="display_name" required maxlength="120"></label>
     <label>이메일<input type="email" name="email" required maxlength="254"></label>
     <label>임시 비밀번호<input type="password" name="temporary_password" required minlength="12" maxlength="256" autocomplete="new-password"></label>
+    <label>권한<select name="permission_level"><option value="1">1단계 사용자</option><option value="2">2단계 사용자</option></select></label>
     <div class="form-actions"><button class="button primary" type="submit">계정 등록</button></div>
   </form>
 </section>
@@ -49,12 +53,25 @@
     <button class="button primary" type="submit">계정 등록</button>
   </form>
 </section>
-<section class="table-wrap account-table">
-  <table>
-    <thead><tr><th>이름</th><th>이메일</th><th>권한</th><th>상태</th><th>비밀번호 상태</th><th>등록일</th></tr></thead>
-    <tbody>{% for user in users %}
-      <tr><td>{{ user.display_name }}</td><td>{{ user.email }}</td><td>{{ "관리자" if user.is_admin else "사용자" }}</td><td>{{ "활성" if user.is_active else "비활성" }}</td><td>{{ "첫 로그인 변경 필요" if user.must_change_password else "설정 완료" }}</td><td>{{ user.created_at.strftime("%Y-%m-%d") if user.created_at else "-" }}</td></tr>
-    {% else %}<tr><td colspan="6">등록된 계정이 없습니다.</td></tr>{% endfor %}</tbody>
-  </table>
-</section>
+<section class="card"><h2>등록된 사용자</h2>
+<form method="get" action="/admin/users" class="account-search"><label>이름 또는 아이디 검색<input name="search" value="{{ search }}" placeholder="이름 또는 이메일"></label><button class="button" type="submit">검색</button></form>
+<p>1단계는 일정 변경을 요청하고, 2단계는 일정을 직접 수정하거나 요청을 승인합니다. 변경한 열의 저장 버튼을 눌러 적용하세요.</p>
+<div class="table-wrap account-table"><table>
+<thead><tr><th>이름</th><th>아이디(이메일)</th><th>권한</th><th>상태</th><th>비밀번호</th><th>등록일</th></tr></thead>
+<tbody>{% for user in users %}<tr>
+<td>{{ user.display_name }}</td><td>{{ user.email }}</td>
+<td>{% if user.is_admin %}관리자{% else %}
+<form class="account-cell-form" method="post" action="/admin/users/{{ user.id }}/permission">
+<select name="permission_level" aria-label="{{ user.display_name }} 권한"><option value="1" {% if user.permission_level == 1 %}selected{% endif %}>1단계 사용자</option><option value="2" {% if user.permission_level == 2 %}selected{% endif %}>2단계 사용자</option></select>
+<button class="button" type="submit">저장</button></form>{% endif %}</td>
+<td>{% if user.is_admin %}{{ "활성" if user.is_active else "비활성" }}{% else %}
+<form class="account-cell-form" method="post" action="/admin/users/{{ user.id }}/status">
+<select name="active" aria-label="{{ user.display_name }} 상태"><option value="true" {% if user.is_active %}selected{% endif %}>활성</option><option value="false" {% if not user.is_active %}selected{% endif %}>비활성</option></select>
+<button class="button" type="submit">저장</button></form>{% endif %}</td>
+<td>{{ "첫 로그인 변경 필요" if user.must_change_password else "설정 완료" }}
+{% if not user.is_admin %}<details><summary>비밀번호 재발급</summary><p>{{ user.display_name }} · {{ user.email }}<br>재발급하면 이 사용자의 기존 로그인 세션이 종료됩니다.</p>
+<form method="post" action="/admin/users/{{ user.id }}/reset-password"><button class="button" type="submit">임시 비밀번호 발급</button></form></details>{% endif %}</td>
+<td>{{ user.created_at.strftime("%Y-%m-%d") if user.created_at else "-" }}</td></tr>
+{% else %}<tr><td colspan="6">검색된 계정이 없습니다.</td></tr>{% endfor %}</tbody>
+</table></div></section>
 {% endblock %}
