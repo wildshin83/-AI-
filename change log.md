@@ -29,4 +29,4 @@
 | 2026-10-16 | P10 기반 | 런타임과 DDL 마이그레이션 URL 분리, 제한된 앱 역할 지침, `BOM_DATABASE_URL` 기반 psycopg 연결, TLS 기본값, Alembic 연결, DB 헬스체크, 원격 DB에서 로컬 SQLite 백업·복원 차단을 추가 | 실제 Supabase 자격증명이 없어 원격 연결·마이그레이션은 실행하지 않음. 설정·운영 절차를 `SUPABASE_DATABASE_SETUP.md`, 미연결 상태를 `error.md`에 기록 |
 | 2026-10-16 | Vercel 공개 테스트 | PostgreSQL 원본 파일 저장, 4MB 업로드 제한, FastAPI 진입점·의존성·rewrite 설정 및 테스트 DB 격리 절차를 추가 | Ruff와 Python 컴파일 검사 통과. 자동 테스트와 원격 DB 마이그레이션은 미실행 |
 | 2026-10-16 | 인증·계정 관리 | 앱 전체 로그인 게이트, PBKDF2 비밀번호 저장, 로그인 잠금, 최초 관리자 설정, 관리자 전용 계정 등록·Excel 일괄 등록, 첫 로그인 비밀번호 변경을 추가 | 마이그레이션 0010 추가. 공개 배포 전 환경 변수·접근 범위를 확인해야 함 |
-| 2026-10-16 | Vercel FastAPI 공개 라우팅 | catch-all rewrite가 로그인·헬스 경로에서 리다이렉트 루프를 일으켜 Vercel 권장 FastAPI 진입점으로 전환 | `app.main:app`을 공식 진입점으로 지정하고 catch-all rewrite 제거. Production 재배포 후 공개 로그인 및 헬스 경로 확인 예정 |
+| 2026-10-16 | Vercel FastAPI 공개 라우팅 | catch-all rewrite가 로그인·헬스 경로에서 리다이렉트 루프를 일으켜 Vercel 권장 FastAPI 진입점으로 전환 | `app.main:app`을 공식 진입점으로 지정하고 catch-all rewrite 제거. Production 배포 `df7a6a8`에서 로그인 화면, PostgreSQL 헬스 응답, 최초 관리자 폼 확인 |
