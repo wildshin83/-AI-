@@ -1,16 +1,76 @@
 {% extends "base.html" %}
 {% block title %}프로젝트 등록 | BOM 관리 서비스{% endblock %}
 {% block content %}
-<section class="page-heading"><div><h1>프로젝트 등록</h1><p>별표(*) 항목은 필수입니다.</p></div><a class="button" href="/projects">목록</a></section>
+<section class="page-heading"><div><h1>프로젝트 등록</h1><p>회사 채번 기준에 따라 항목을 선택하면 프로젝트 번호를 자동 조합합니다.</p></div><a class="button" href="/projects">목록</a></section>
 {% if error %}<p class="error-message">{{ error }}</p>{% endif %}
-<form class="card form-grid" method="post" action="/projects">
-  <label>프로젝트 번호 *<input name="project_number" required value="{{ project.project_number if project else '' }}"></label>
+<form class="card form-grid" method="post" action="/projects" id="project-form">
+  <div class="code-preview form-span"><strong>프로젝트 번호 미리보기</strong><output id="project-number-preview" aria-live="polite">항목을 선택해 주세요.</output><small>순번은 같은 약호 조합의 등록 번호를 확인해 자동으로 제안합니다.</small></div>
+  <label>프로젝트 구분 *<select name="project_type" required data-code-field><option value="">선택</option>{% for code, label in project_types.items() %}<option value="{{ code }}" {% if project and project.project_type == code %}selected{% endif %}>{{ code }} · {{ label }}</option>{% endfor %}</select></label>
+  <label>고객사 *<select name="customer_name" required data-code-field><option value="">선택</option>{% for customer, code in customer_codes.items() %}<option value="{{ customer }}" {% if project and project.customer_name == customer %}selected{% endif %}>{{ customer }} ({{ code }})</option>{% endfor %}</select></label>
+  <label>사이트 *<select name="site_code" required data-code-field><option value="">선택</option>{% for code, label in site_codes.items() %}<option value="{{ code }}" {% if project and project.site_code == code %}selected{% endif %}>{{ code }} · {{ label }}</option>{% endfor %}</select></label>
+  <label>설비 구분 *<select name="equipment_code" required data-code-field><option value="">선택</option>{% for code, label in equipment_codes.items() %}<option value="{{ code }}" {% if project and project.equipment_code == code %}selected{% endif %}>{{ code }} · {{ label }}</option>{% endfor %}</select></label>
+  <label>수주연도 *<input name="award_year" list="award-year-values" required data-code-field inputmode="numeric" autocomplete="off" maxlength="2" pattern="[0-9]{2}" placeholder="예: 26" value="{{ project.award_year if project else '' }}"><small>기준서 범위: 23~30</small><datalist id="award-year-values">{% for year in years %}<option value="{{ year }}">{% endfor %}</datalist></label>
+  <label>라인 번호 *<input name="line_code" list="line-values" required data-code-field inputmode="numeric" autocomplete="off" maxlength="2" pattern="[0-9]{2}" placeholder="00~10" value="{{ project.line_code if project else '' }}"><small>전체 라인은 00, 개별 라인은 01~10</small><datalist id="line-values">{% for code in line_codes %}<option value="{{ code }}">{% endfor %}</datalist></label>
+  <label>호기 번호 *<input name="unit_code" list="unit-values" required data-code-field inputmode="numeric" autocomplete="off" maxlength="2" pattern="[0-9]{2}" placeholder="00~03" value="{{ project.unit_code if project else '' }}"><small>전체 호기는 00, 개별 호기는 01~03</small><datalist id="unit-values">{% for code in unit_codes %}<option value="{{ code }}">{% endfor %}</datalist></label>
+  <label>부서/사업 구분 *<select name="department_code" required data-code-field><option value="">선택</option>{% for code, label in department_codes.items() %}<option value="{{ code }}" {% if project and project.department_code == code %}selected{% endif %}>{{ code }} · {{ label }}</option>{% endfor %}</select></label>
+  <label>Main PJT 구분 *<select name="main_project_code" required data-code-field><option value="">선택</option>{% for code, label in main_project_codes.items() %}<option value="{{ code }}" {% if project and project.main_project_code == code %}selected{% endif %}>{{ code }} · {{ label }}</option>{% endfor %}</select></label>
+  <label>유·무상/유지보수 구분<select name="order_code" data-code-field>{% for code, label in order_codes.items() %}<option value="{{ code }}" {% if project and project.order_code == code %}selected{% elif not project and code == 'A' %}selected{% endif %}>{{ label }}{% if code %} ({{ code }}){% endif %}</option>{% endfor %}</select></label>
+  <label>주문 순번 *<input name="order_serial" id="order-serial" required data-code-field inputmode="numeric" autocomplete="off" maxlength="3" pattern="[0-9]{3}" placeholder="자동 제안 또는 직접 입력" value="{{ project.order_serial if project else '' }}"><small>기준서 순번: 000~999</small></label>
   <label>프로젝트명 *<input name="project_name" required value="{{ project.project_name if project else '' }}"></label>
-  <label>고객사 *<input name="customer_name" required value="{{ project.customer_name if project else '' }}"></label>
-  <label>장비명/호기 *<input name="equipment_unit" required value="{{ project.equipment_unit if project else '' }}"></label>
+  <label>장비명/호기 상세 *<input name="equipment_unit" required value="{{ project.equipment_unit if project else '' }}"></label>
   <label>담당자 *<input name="manager_name" required value="{{ project.manager_name if project else '' }}"></label>
   <label>진행 상태 *<select name="project_status">{% for item in statuses %}<option value="{{ item.value }}" {% if project and project.status == item.value %}selected{% endif %}>{{ item.value }}</option>{% endfor %}</select></label>
   <label>목표 납기일<input type="date" name="target_delivery_date" value="{{ project.target_delivery_date if project and project.target_delivery_date else '' }}"></label>
-  <div class="form-actions"><button class="button primary" type="submit">등록</button></div>
+  <div class="form-actions form-span"><button class="button primary" type="submit">등록</button></div>
 </form>
+<script>
+(() => {
+  const form = document.getElementById("project-form");
+  const preview = document.getElementById("project-number-preview");
+  const fields = [...form.querySelectorAll("[data-code-field]")];
+  const serial = document.getElementById("order-serial");
+  const textNumbers = [...form.querySelectorAll('input[name="award_year"], input[name="line_code"], input[name="unit_code"], input[name="order_serial"]')];
+  let requestId = 0;
+  let serialWasEdited = Boolean(serial.value && serial.value !== "001");
+  async function updatePreview() {
+    if (fields.some((field) => !field.value && !["order_code", "order_serial"].includes(field.name))) {
+      preview.textContent = "채번 항목을 모두 선택해 주세요.";
+      return;
+    }
+    const current = ++requestId;
+    preview.textContent = "번호 확인 중…";
+    try {
+      const query = new URLSearchParams(new FormData(form));
+      const response = await fetch(`/projects/code-preview?${query}`);
+      const result = await response.json();
+      if (current !== requestId) return;
+      if (response.ok && result.order_serial && !serialWasEdited) serial.value = result.order_serial;
+      preview.textContent = response.ok ? result.project_number : result.error;
+    } catch {
+      if (current === requestId) preview.textContent = "번호를 확인할 수 없습니다. 연결 상태를 확인해 주세요.";
+    }
+  }
+  fields.forEach((field) => field.addEventListener("change", () => {
+    if (field !== serial && !serialWasEdited && serial.value) serial.value = "";
+    serial.disabled = !form.elements.order_code.value;
+    serial.required = !serial.disabled;
+    if (serial.disabled) serial.value = "";
+    updatePreview();
+  }));
+  textNumbers.forEach((field) => {
+    field.addEventListener("input", () => {
+      field.value = field.value.replace(/[^0-9]/g, "").slice(0, field.maxLength);
+      if (field === serial) serialWasEdited = true;
+      updatePreview();
+    });
+    field.addEventListener("blur", () => {
+      if (["line_code", "unit_code"].includes(field.name) && field.value.length === 1) field.value = `0${field.value}`;
+      updatePreview();
+    });
+  });
+  serial.disabled = !form.elements.order_code.value;
+  serial.required = !serial.disabled;
+  updatePreview();
+})();
+</script>
 {% endblock %}

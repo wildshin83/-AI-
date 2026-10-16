@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -13,6 +13,21 @@ from sqlalchemy.orm import Session
 from app.db import get_session
 from app.models.alerts import Alert
 from app.models.project import Project, ProjectStatus
+from app.services.project_codes import (
+    CUSTOMER_CODES,
+    CUSTOMER_OPTIONS,
+    DEPARTMENT_CODES,
+    EQUIPMENT_CODES,
+    LINE_CODES,
+    MAIN_PROJECT_CODES,
+    ORDER_CODES,
+    PROJECT_TYPES,
+    SITE_CODES,
+    UNIT_CODES,
+    YEARS,
+    ProjectCodeError,
+    suggest_project_number,
+)
 from app.services.projects import (
     ProjectCreateInput,
     ProjectNumberAlreadyExistsError,
@@ -22,6 +37,25 @@ from app.services.projects import (
 
 router = APIRouter(tags=["projects"])
 templates = Jinja2Templates(directory="app/templates")
+
+
+def _project_form_context(project=None, error=None):
+    return {
+        "project": project,
+        "statuses": list(ProjectStatus),
+        "customer_options": CUSTOMER_OPTIONS,
+        "customer_codes": CUSTOMER_CODES,
+        "project_types": PROJECT_TYPES,
+        "site_codes": SITE_CODES,
+        "equipment_codes": EQUIPMENT_CODES,
+        "years": YEARS,
+        "line_codes": LINE_CODES,
+        "unit_codes": UNIT_CODES,
+        "department_codes": DEPARTMENT_CODES,
+        "main_project_codes": MAIN_PROJECT_CODES,
+        "order_codes": ORDER_CODES,
+        "error": error,
+    }
 
 
 def _project_or_404(session: Session, project_id: int) -> Project:
@@ -89,14 +123,63 @@ def project_new_form(request: Request):
     return templates.TemplateResponse(
         request,
         "projects/form.html",
-        {"project": None, "statuses": list(ProjectStatus), "error": None},
+        _project_form_context(),
     )
+
+
+@router.get("/projects/code-preview")
+def project_code_preview(
+    project_type: str = Query(""),
+    customer_name: str = Query(""),
+    site_code: str = Query(""),
+    equipment_code: str = Query(""),
+    award_year: str = Query(""),
+    line_code: str = Query(""),
+    unit_code: str = Query(""),
+    department_code: str = Query(""),
+    main_project_code: str = Query(""),
+    order_code: str = Query(""),
+    order_serial: str = Query(""),
+    session: Session = Depends(get_session),
+):
+    selection = {
+        "project_type": project_type,
+        "customer_name": customer_name,
+        "site_code": site_code,
+        "equipment_code": equipment_code,
+        "award_year": award_year,
+        "line_code": line_code,
+        "unit_code": unit_code,
+        "department_code": department_code,
+        "main_project_code": main_project_code,
+        "order_code": order_code,
+        "order_serial": order_serial,
+    }
+    try:
+        number = suggest_project_number(session, selection)
+        return JSONResponse(
+            {
+                "project_number": number,
+                "order_serial": number[-3:] if order_code else "",
+            }
+        )
+    except ProjectCodeError as error:
+        return JSONResponse({"error": str(error)}, status_code=422)
 
 
 @router.post("/projects")
 def project_create(
     request: Request,
-    project_number: str = Form(),
+    project_type: str = Form(),
+    site_code: str = Form(),
+    equipment_code: str = Form(),
+    award_year: str = Form(),
+    line_code: str = Form(),
+    unit_code: str = Form(),
+    department_code: str = Form(),
+    main_project_code: str = Form(),
+    order_code: str = Form(""),
+    order_serial: str = Form(""),
     project_name: str = Form(),
     customer_name: str = Form(),
     equipment_unit: str = Form(),
@@ -105,7 +188,21 @@ def project_create(
     target_delivery_date: date | None = Form(None),
     session: Session = Depends(get_session),
 ):
+    selection = {
+        "project_type": project_type,
+        "customer_name": customer_name,
+        "site_code": site_code,
+        "equipment_code": equipment_code,
+        "award_year": award_year,
+        "line_code": line_code,
+        "unit_code": unit_code,
+        "department_code": department_code,
+        "main_project_code": main_project_code,
+        "order_code": order_code,
+        "order_serial": order_serial,
+    }
     try:
+        project_number = suggest_project_number(session, selection)
         project = create_project(
             session,
             ProjectCreateInput(
@@ -119,22 +216,20 @@ def project_create(
             ),
         )
     except (ValueError, ProjectNumberAlreadyExistsError) as error:
+        project = {
+            **selection,
+            "project_number": None,
+            "project_name": project_name,
+            "customer_name": customer_name,
+            "equipment_unit": equipment_unit,
+            "manager_name": manager_name,
+            "status": project_status,
+            "target_delivery_date": target_delivery_date,
+        }
         return templates.TemplateResponse(
             request,
             "projects/form.html",
-            {
-                "project": {
-                    "project_number": project_number,
-                    "project_name": project_name,
-                    "customer_name": customer_name,
-                    "equipment_unit": equipment_unit,
-                    "manager_name": manager_name,
-                    "status": project_status,
-                    "target_delivery_date": target_delivery_date,
-                },
-                "statuses": list(ProjectStatus),
-                "error": str(error),
-            },
+            _project_form_context(project, str(error)),
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
