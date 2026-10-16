@@ -5,9 +5,13 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import paths
+from app.db import engine, is_sqlite_database
 from app.routes.alerts import router as alerts_router
 from app.routes.bom import router as bom_router
 from app.routes.drawings import router as drawings_router
@@ -45,7 +49,17 @@ app.include_router(quotes_router)
 
 
 @app.get("/health", tags=["system"])
-def health_check() -> dict[str, str]:
-    """설치 및 로컬 실행 상태를 확인한다."""
+def health_check(details: bool = False) -> JSONResponse:
+    """DB 연결을 확인하고 민감정보 없이 현재 DB 종류만 반환한다."""
 
-    return {"status": "ok", "service": "bom-management-service"}
+    database = "sqlite" if is_sqlite_database() else "postgresql"
+    content = {"status": "ok", "service": "bom-management-service"}
+    if details:
+        content["database"] = database
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except SQLAlchemyError:
+        content["status"] = "unavailable"
+        return JSONResponse(status_code=503, content=content)
+    return JSONResponse(content=content)

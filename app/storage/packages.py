@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from app.config import paths
+from app.db import is_sqlite_database
 
 
 def create_json_package(
@@ -32,6 +33,10 @@ def read_package_manifest(path: Path) -> dict[str, object]:
 def create_local_backup() -> Path:
     """SQLite DB와 관리 파일을 한 ZIP에 복사하며 기존 백업은 보존한다."""
 
+    if not is_sqlite_database():
+        raise RuntimeError(
+            "이 기능은 로컬 SQLite 백업 전용입니다. Supabase PostgreSQL은 별도 백업 절차를 사용하세요."
+        )
     paths.ensure_directories()
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     destination = paths.backups / f"local_backup_{stamp}.zip"
@@ -75,6 +80,10 @@ def _unsafe_archive_member(member_name: str) -> bool:
 def restore_local_backup(path: Path) -> Path:
     """검증된 백업으로 DB·첨부 파일을 복원하고, 기존 상태는 자동 백업한다."""
 
+    if not is_sqlite_database():
+        raise RuntimeError(
+            "SQLite 백업을 Supabase PostgreSQL에 복원할 수 없습니다. Supabase 복구 절차를 사용하세요."
+        )
     inspect_local_backup(path)
     paths.ensure_directories()
     pre_restore_backup = create_local_backup()

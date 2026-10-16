@@ -7,12 +7,13 @@ CS사업부 기술팀용 BOM·ERP·견적 검토 서비스입니다. 앱은 팀�
 - 앱은 각 사용자 PC에서 실행합니다.
 - 목표 구조에서 프로젝트·BOM·ERP·가격·견적 데이터는 Supabase PostgreSQL에 저장합니다.
 - Supabase는 DB만 사용합니다. 인증과 파일 저장은 제공하지 않으며, 도면·원본·첨부 파일은 PC별 앱 데이터 폴더에 보관합니다.
-- 현재 구현은 SQLite를 사용합니다. Supabase 접속정보·마이그레이션·운영 백업은 P10 작업 대상입니다.
+- Supabase 연결 기반은 구현됐습니다. 프로젝트 연결 문자열 설정, 마이그레이션 적용, 기존 데이터 이관, 운영 권한·백업 검증은 P10에서 진행 중입니다.
 - Excel 원본, 도면, 가격 확정, 견적 제출본은 변경 이력과 함께 보존합니다.
 - ERP 후보값은 자동 적용하지 않습니다.
 - 고객 출력물과 내부 원가 정보는 분리합니다.
 
 상세 요구사항은 `prd.md`, 실제 Excel 열 매핑과 제약은 `EXCEL_MAPPING_RULES.md`, 구현 진행 상태는 `plan.md`를 참조합니다.
+Supabase PostgreSQL 설정은 `SUPABASE_DATABASE_SETUP.md`를 참조합니다.
 
 ## 참고자료
 
@@ -22,7 +23,7 @@ CS사업부 기술팀용 BOM·ERP·견적 검토 서비스입니다. 앱은 팀�
 
 기본 로컬 파일 경로는 Windows의 `%LOCALAPPDATA%\\BomManagementService`입니다. DB 전환 후에도 이 경로는 첨부 파일, 출력물, 로그 등의 로컬 저장에 사용합니다.
 
-- `data/`: 현재 구현의 SQLite DB. Supabase 전환 후에는 로컬 업무 DB로 사용하지 않을 예정
+- `data/`: `BOM_DATABASE_URL`이 없을 때만 사용하는 개발용 SQLite DB
 - `files/`: 업로드 원본 및 첨부 파일
 - `exports/`: 생성한 Excel 출력물
 - `backups/`: 백업 파일
@@ -34,9 +35,11 @@ CS사업부 기술팀용 BOM·ERP·견적 검토 서비스입니다. 앱은 팀�
 
 ```powershell
 python -m pip install -e ".[dev]"
-python -m alembic upgrade head
+python -m app.migrate
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8765
 ```
+
+Supabase를 연결하려면 프로젝트 루트의 로컬 `.env` 파일에 `BOM_DATABASE_URL`을 설정하거나 프로세스 환경변수로 주입해야 합니다. `.env`는 Git에서 제외됩니다. 설정이 없으면 기존 개발용 SQLite DB를 사용하므로, Supabase 전환 여부는 `/health`의 `database` 값으로 확인합니다. 연결 설정·마이그레이션 절차는 `SUPABASE_DATABASE_SETUP.md`를 따릅니다.
 
 브라우저에서 `http://127.0.0.1:8765/health`로 상태를 확인할 수 있습니다.
 

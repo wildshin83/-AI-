@@ -102,6 +102,7 @@
 | `CUSTOMER_QUOTE_TEMPLATE_RULES.md` | LGES 고객 견적 2번 시트의 열·행 구조, 판매 견적 데이터 연결, 고객 출력 보안·템플릿 보존 규칙 | 견적 차수·고객 Excel 출력 구현 및 양식 변경 시 |
 | `CALCULATION_ENGINE_GUIDE.md` | LibreOffice 기반 고객 견적 수식 재계산, 설치 경로, 오류 검증과 파일럿 확인 기준 | 고객 견적 Excel 출력 배포·PC 설치·오류 대응 시 |
 | `BACKUP_RESTORE_GUIDE.md` | 현재 SQLite 절차와 Supabase DB·로컬 첨부 파일의 백업·복구 범위, 안전장치와 운영 책임 | 앱 업데이트 전·장애 복구·PC 교체 시 |
+| `SUPABASE_DATABASE_SETUP.md` | Supabase PostgreSQL 접속 설정, 마이그레이션, 보안·운영 전제 | Supabase DB 연결·배포·백업 운영 시 |
 | `change log.md` | 사용자 요구, 기능·데이터·업무 규칙 변경의 이력 | 구현 변경을 완료하고 검증할 때마다 갱신 |
 | `error.md` | 오류 증상, 원인, 해결·재발 방지 및 미해결 제약 | 오류를 발견·해결하거나 외부 데이터 제약을 확인할 때마다 갱신 |
 | `TEST_SCENARIOS.md` | 실제 파일럿의 E2E·보안·백업 검증 절차와 배포 판정 기준 | P9 통합 검증·파일럿·배포 준비 시 |

@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import paths, reference_material_path
-from app.db import get_session
+from app.db import get_session, is_sqlite_database
 from app.exporters.excel import (
     export_bom,
     export_bom_revision_comparison,
@@ -46,7 +46,12 @@ def _project_or_404(session: Session, project_id: int) -> Project:
 @router.get("/projects/{project_id}/operations")
 def operations_page(request: Request, project_id: int, session: Session = Depends(get_session)):
     return templates.TemplateResponse(
-        request, "operations/index.html", {"project": _project_or_404(session, project_id)}
+        request,
+        "operations/index.html",
+        {
+            "project": _project_or_404(session, project_id),
+            "sqlite_database": is_sqlite_database(),
+        },
     )
 
 
@@ -167,7 +172,10 @@ def project_package_export(
 
 @router.post("/backups")
 def local_backup() -> FileResponse:
-    backup = create_local_backup()
+    try:
+        backup = create_local_backup()
+    except RuntimeError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     return FileResponse(backup, filename=backup.name)
 
 
@@ -177,6 +185,11 @@ async def local_backup_restore(
     backup_file: UploadFile = File(),
     confirmation: str = Form(),
 ):
+    if not is_sqlite_database():
+        raise HTTPException(
+            status_code=409,
+            detail="이 복원 기능은 로컬 SQLite 전용입니다. Supabase 복구 절차를 사용하세요.",
+        )
     if confirmation != "RESTORE":
         raise HTTPException(status_code=422, detail="복원 확인 문구 RESTORE를 정확히 입력하세요.")
     if not backup_file.filename or Path(backup_file.filename).suffix.lower() != ".zip":
@@ -185,7 +198,7 @@ async def local_backup_restore(
     temporary_path.write_bytes(await backup_file.read())
     try:
         pre_restore_backup = restore_local_backup(temporary_path)
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, RuntimeError) as error:
         raise HTTPException(status_code=422, detail=f"백업 복원 실패: {error}") from error
     finally:
         temporary_path.unlink(missing_ok=True)

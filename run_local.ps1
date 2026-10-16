@@ -16,7 +16,10 @@ if ($DataDirectory) {
 
 Push-Location $projectRoot
 try {
-    & $pythonPath -m alembic upgrade head
+    & $pythonPath -m app.migrate
+    if ($LASTEXITCODE -ne 0) {
+        throw "데이터베이스 마이그레이션에 실패했습니다. 오류를 확인하고 앱을 시작하지 않았습니다."
+    }
     Start-Process "http://127.0.0.1:8765/projects"
     & $pythonPath -m uvicorn app.main:app --host 127.0.0.1 --port 8765
 }
